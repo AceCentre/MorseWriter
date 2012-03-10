@@ -30,6 +30,7 @@ Currently built for Windows. Let us know how you get on with different variants 
 * Sounds can't be edited - these are from the system folder 
 
 **Tips for Building yourself**
+
 - Python 2.6 or earlier for [pyinstaller](http://www.pyinstaller.org/) 
 - [PyHook](http://sourceforge.net/projects/uncassist/) 
 - [PyWin32](http://sourceforge.net/projects/pywin32/)
