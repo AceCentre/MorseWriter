@@ -42,12 +42,12 @@ For further research and reading material on the use of Morse in assistive techn
 
 **Credits**
 
-* DavidDW for pure awesomeness
+* DavidDW for coding geniusness
 * [Darci USB for code conversion](http://www.westest.com/darci/index.html) 
-* Andy/[ACE North](http://www.ace-north.org.uk/) for inspiration 
+* Andy/Lisa[ACE North](http://www.ace-north.org.uk/) for original thoughts 
 * [Jim Rubin and others](http://www.makoa.org/jlubin/morsecode.htm)
 * [The Noun Project](http://thenounproject.com/) for the icon 
 
 Please contact me if you intend to fork this or do anything fun with it - will AT e-wade.net   
 
-Enjoy! 
+Enjoy!
