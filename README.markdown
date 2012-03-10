@@ -36,6 +36,7 @@ Currently built for Windows. Let us know how you get on with different variants 
 - [PyWin32](http://sourceforge.net/projects/pywin32/)
 - [PyQt](http://www.riverbankcomputing.com/software/pyqt/intro)
 
+
     python Configure.py
     python Makespec.py --onefile path_to_your_morsecodegui.py 
     python Build.py path_to_the_Morsecodegui.spec
