@@ -42,6 +42,7 @@ You will need Python 2.6 or earlier for [pyinstaller](http://www.pyinstaller.org
 * [Darci USB for code conversion](http://www.westest.com/darci/index.html) 
 * Andy/[ACE North](http://www.ace-north.org.uk/) for inspiration 
 * [Jim Rubin and others](http://www.makoa.org/jlubin/morsecode.htm)
+* [The Noun Project](http://thenounproject.com/) for the icon 
 
 Please contact me if you intend to fork this or do anything fun with it - will AT e-wade.net   
 
