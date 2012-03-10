@@ -1,9 +1,11 @@
-*MorseWriter*
+MorseWriter
+-----------
 
 This is a small system tray app designed in Python to interpret one or two key presses pressed in a set way (morse) and convert them to the key equivalent. This should mean that a user who has good timing can access the entire computer and write. 
 For code, bug tracking and feature requests see [https://github.com/willwade/MorseWriter/](https://github.com/willwade/MorseWriter/)
 
 **Requirements**
+
 Currently built for Windows. Let us know how you get on with different variants of Windows. Plan is to port this to Mac after v2. 
 
 **Usage**
