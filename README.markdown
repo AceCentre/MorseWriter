@@ -31,7 +31,7 @@ Currently built for Windows. Let us know how you get on with different variants 
 
 **Credits**
 
-* DavidDW for coding
+* DavidDW for pure awesomeness
 * [Darci USB for code conversion](http://www.westest.com/darci/index.html) 
 * Andy/[ACE North](http://www.ace-north.org.uk/) for inspiration 
 * [Jim Rubin and others](http://www.makoa.org/jlubin/morsecode.htm)
