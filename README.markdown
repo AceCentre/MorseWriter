@@ -57,8 +57,6 @@ Please contact me if you intend to fork this or do anything fun with it - will A
 
 Enjoy!
 
-**Morse Table**
-
 <table border="0" cellspacing="0" cellpadding="0">
     <tr>
         <th colspan="6">MorseWriter Key Codes</th>
@@ -304,4 +302,4 @@ Enjoy!
     </tr>
 </table>
 
-\*NB:To type Control+V you need to first go into repeat mode then type V. 
+\*NB:To type Control+V you need to first go into repeat mode then type V.
