@@ -29,6 +29,16 @@ Currently built for Windows. Let us know how you get on with different variants 
 * 1 & 2 input keys relate to the keys above the letters on the keyboard - not a numeric keypad
 * Sounds can't be edited - these are from the system folder 
 
+**Tips for Building yourself**
+- Python 2.6 or earlier for [pyinstaller](http://www.pyinstaller.org/) 
+- [PyHook](http://sourceforge.net/projects/uncassist/) 
+- [PyWin32](http://sourceforge.net/projects/pywin32/)
+- [PyQt](http://www.riverbankcomputing.com/software/pyqt/intro)
+
+  python Configure.py
+  python Makespec.py --onefile path_to_your_morsecodegui.py 
+  python Build.py path_to_the_Morsecodegui.spec
+
 **Credits**
 
 * DavidDW for pure awesomeness
