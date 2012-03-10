@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN"
+"http://www.w3.org/TR/2001/REC-MathML2-20010221/dtd/xhtml-math11-f.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>Untitled</title>
+
+  <style type="text/css">
+/* +++ master +++ */
+/* html elements */
+
+body {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    vertical-align: baseline;
+    overflow:hidden;
+    background-color: #f2f2f2;
+    color: #3c3c3c;
+    font-size: 62.5%;
+    line-height: 2.4em;
+    -webkit-font-smoothing: antialiased;
+}
+a {
+    color: #308bd8;
+    text-decoration:none;
+}
+a:hover {
+    text-decoration: underline;
+}
+/* headings */
+h1, h2 {
+    line-height:1.2em;
+    margin-top:32px;
+    margin-bottom:12px;
+}
+h1:first-child {
+    margin-top:0;
+}
+h3, h4, h5, h6 {
+    margin-top:12px;
+    margin-bottom:0;
+}
+h5, h6 {
+    font-size:0.9em;
+    line-height:1.0em;
+}
+/* end of headings */
+p {
+    margin:0 0 24px 0;
+}
+p:last-child {
+    margin:0;
+}
+hr {
+    width: 100%;
+    margin: 3em auto;
+    border: 0;
+    color: #eee;
+    background-color: #ccc;
+    height: 1px;
+    -webkit-box-shadow:0px 1px 0px rgba(255, 255, 255, 0.75);
+}
+/* lists */
+ol {
+    list-style: outside decimal;
+}
+ul {
+    list-style: outside disc;
+}
+ol, ul {
+    padding-left:0;
+    margin-bottom:24px;
+}
+ol li {
+    margin-bottom:16px;
+    margin-left:28px;
+}
+ul li {
+    margin-bottom:16px;
+    margin-left:16px;
+}
+ol:last-child, ul:last-child {
+    margin:0;
+}
+li > p {
+    margin-bottom:12px;
+}
+li > ol, li > ul {
+    margin-top: 16px !important;
+    padding-left:16px;
+}
+dl {
+    margin-bottom:24px;
+}
+dl dt {
+    font-weight:bold;
+    margin-bottom:8px;
+}
+dl dd {
+    margin-left:0;
+    margin-bottom:12px;
+}
+dl dd:last-child, dl:last-child {
+    margin-bottom:0;
+}
+/* end of lists */
+pre {
+    white-space: pre-wrap;
+    width: 96%;
+    margin-bottom: 24px;
+    overflow: hidden;
+    padding: 3px 10px;
+    -webkit-border-radius: 3px;
+    background-color: #eee;
+    border: 1px solid #ddd;
+}
+code {
+    white-space: nowrap;
+    font-size: 1.1em;
+    padding: 2px;
+    -webkit-border-radius: 3px;
+    background-color: #eee;
+    border: 1px solid #ddd;
+}
+pre code {
+    white-space: pre-wrap;
+    border: none;
+    padding: 0;
+    background-color: transparent;
+    -webkit-border-radius: 0;
+}
+blockquote {
+    margin-left: 0;
+    margin-right: auto;
+    width: 96%;
+    padding: 0 10px;
+    border-left: 3px solid #ddd;
+    color: #777;
+}
+table {
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 24px;
+    border-bottom: 1px solid #ddd;
+    border-right: 1px solid #ddd;
+    border-spacing: 0;
+}
+table th {
+    padding: 3px 10px;
+    background-color: #eee;
+    border-top: 1px solid #ddd;
+    border-left: 1px solid #ddd;
+}
+table tr {
+}
+table td {
+    padding: 3px 10px;
+    border-top: 1px solid #ddd;
+    border-left: 1px solid #ddd;
+}
+caption {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+figure {
+    display: block;
+    text-align: center;
+}
+img {
+    border: none;
+    display: block;
+    margin: 1em auto;
+    max-width: 100%;
+}
+figcaption {
+    font-size: 0.8em;
+    font-style: italic;
+}
+mark {
+    background: #fefec0;
+    padding:1px 3px;
+}
+
+/* unique elements */
+
+#wrapper {
+    position: fixed;
+    height: 100%;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    font-size: 1.0em;
+    width: 100%;
+}
+#content {
+    margin: 0 50px 0 50px;
+    padding: 30px 0 30px 0;
+    font-family: Cochin, Palatino, Georgia, serif;
+    font-size: 1.7em;
+}
+
+#wrapper::-webkit-scrollbar {
+    width: 8px;
+    height: 10px;
+    -webkit-transition: all .45s ease-in;
+    position: relative;
+}
+#wrapper::-webkit-scrollbar-button:start:decrement, #wrapper::-webkit-scrollbar-button:end:increment {
+    height: 0px;
+    display: block;
+    background-color: transparent;
+}
+#wrapper::-webkit-scrollbar-track-piece {
+    background-color:
+    transparent;
+    -webkit-border-radius: 6px;
+}
+#wrapper::-webkit-scrollbar-thumb:vertical {
+    height: 50px;
+    background-color: #c8c8c8;
+    -webkit-border-radius: 6px;
+    -webkit-transition: all .45s ease-in;
+}
+
+/* classes */
+
+.markdowncitation {
+}
+.footnote {
+    font-size: 0.8em;
+    vertical-align: super;
+}
+.footnotes ol {
+    font-weight: bold;
+}
+.footnotes ol li p {
+    font-weight: normal;
+}
+
+/* custom formatting classes */
+
+.shadow {
+    -webkit-box-shadow: 0 2px 4px #999;
+}
+
+.source {
+    text-align: center;
+    font-size: 0.8em;
+    color: #777;
+    margin: -40px;
+}
+
+/* Printing support */
+@media print {
+    img, pre, blockquote, table, figure {
+        page-break-inside: avoid;
+    }
+
+    #wrapper {
+        position: static;
+        overflow: hidden;
+    }
+    
+    .footnotes {
+        page-break-before: always;
+    }
+}
+/* --- master --- */
+/* +++ export overrides +++ */
+#wrapper {
+    width: 99.9%;
+}
+#content {
+    width: 610px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Mobile support */
+@media only screen and (max-device-width:1024px) {
+    html {
+        overflow: auto;
+    }
+
+    #wrapper {
+        overflow: auto;
+        position: relative;
+    }
+}
+/* --- export overrides --- */
+
+  </style>
+</head>
+<body>
+  <div id="wrapper">
+    <div id="content">
+<h2 id="morsewriter">MorseWriter</h2>
+
+<p>This is a small system tray app designed in Python to interpret one or two key presses pressed in a set way (morse) and convert them to the key equivalent. This should mean that a user who has good timing can access the entire computer and write.
+For code, bug tracking and feature requests see <a href="https://github.com/willwade/MorseWriter/">https://github.com/willwade/MorseWriter/</a></p>
+
+<p><strong>Requirements</strong>
+Currently built for Windows. Let us know how you get on with different variants of Windows. Plan is to port this to Mac after v2. </p>
+
+<p><strong>Usage</strong></p>
+
+<ul>
+<li><a href="https://github.com/downloads/willwade/MorseWriter/MorseWriter.zip">Download the MorseWriter Application and Code Chart from here</a></li>
+<li>Run the MorseWriter.exe</li>
+<li>Select your options</li>
+<li>Note the two key option: the key on the left hand pull down menu relates to dit (*) and one on the right relates to dah (-)</li>
+<li>Set your sounds</li>
+<li>Press go</li>
+<li>Minimise the black debug window. NB: If you close it you are closing the app.</li>
+<li>Note that all normal key entry is now disabled. To halt the script use a mouse to navigate to the system tray icon and quit the app</li>
+</ul>
+
+<p><strong>Tips for first use</strong></p>
+
+<ul>
+<li>Open up the code chart document or print it!</li>
+<li>Use notepad to test your typing skills</li>
+<li>To get used to typing you have to first get used to the speed of things. Just try a e and a t for starters.</li>
+</ul>
+
+<p><strong>Issues:</strong></p>
+
+<ul>
+<li>Debug window needs to be minimised even if debug switched off</li>
+<li>If you set to two key mode you need to be careful not to set both keys as input</li>
+<li>1 &amp; 2 input keys relate to the keys above the letters on the keyboard - not a numeric keypad</li>
+<li>Sounds can&#8217;t be edited - these are from the system folder</li>
+</ul>
+
+<p><strong>Tips for Building yourself</strong></p>
+
+<p>You will need Python 2.6 or earlier for <a href="http://www.pyinstaller.org/">pyinstaller</a>. You will also need to install some extra libraries - notably <a href="http://sourceforge.net/projects/uncassist/">PyHook</a>, <a href="http://sourceforge.net/projects/pywin32/">PyWin32</a> and <a href="http://www.riverbankcomputing.com/software/pyqt/intro">PyQt</a></p>
+
+<pre><code>python Configure.py
+python Makespec.py --onefile path_to_your_morsecodegui.py 
+python Build.py path_to_the_Morsecodegui.spec
+</code></pre>
+
+<p><strong>Research</strong></p>
+
+<p>For further research and reading material on the use of Morse in assistive technology see <a href="http://www.citeulike.org/user/willwade/tag/morse">http://www.citeulike.org/user/willwade/tag/morse</a> as a starting point</p>
+
+<p><strong>Credits</strong></p>
+
+<ul>
+<li>DavidDW for coding geniusness</li>
+<li><a href="http://www.westest.com/darci/index.html">Darci USB for code conversion</a></li>
+<li>Andy/Lisa/<a href="http://www.ace-north.org.uk/">ACE North</a> for original thoughts</li>
+<li><a href="http://www.makoa.org/jlubin/morsecode.htm">Jim Rubin and others</a></li>
+<li><a href="http://thenounproject.com/">The Noun Project</a> for the icon</li>
+</ul>
+
+<p>Please contact me if you intend to fork this or do anything fun with it - will AT e-wade.net </p>
+
+    </div>
+  </div> <!-- End wrapper -->
+</body>
+</html>
