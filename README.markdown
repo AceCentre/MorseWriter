@@ -22,8 +22,10 @@ This is a small system tray app designed in Python to interpret one or two key p
 
 **Credits**
 
-* David for coding
-* Andy for inspiration 
+* DavidDW for coding
+* [Darci USB for code conversion](http://www.westest.com/darci/index.html) 
+* Andy/[ACE North](http://www.ace-north.org.uk/) for inspiration 
+* [Jim Rubin and others](http://www.makoa.org/jlubin/morsecode.htm)
 
 Please contact me if you intend to fork this or do anything fun with it - will AT e-wade.net   
 
