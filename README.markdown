@@ -36,6 +36,10 @@ You will need Python 2.6 or earlier for [pyinstaller](http://www.pyinstaller.org
     python Makespec.py --onefile path_to_your_morsecodegui.py 
     python Build.py path_to_the_Morsecodegui.spec
 
+**Research**
+
+For further research and reading material on the use of Morse in assistive technology see [http://www.citeulike.org/user/willwade/tag/morse](http://www.citeulike.org/user/willwade/tag/morse) as a starting point
+
 **Credits**
 
 * DavidDW for pure awesomeness
