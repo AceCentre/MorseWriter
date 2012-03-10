@@ -2,6 +2,9 @@
 
 This is a small system tray app designed in Python to interpret one or two key presses pressed in a set way (morse) and convert them to the key equivalent. This should mean that a user who has good timing can access the entire computer and write. 
 
+**Requirements**
+Currently built for Windows. Let us know how you get on with different variants of Windows. Plan is to port this to Mac after v2. 
+
 **Usage**
 
 *   [Download the MorseWriter Application and Code Chart from here](https://github.com/downloads/willwade/MorseWriter/MorseWriter.zip)
@@ -12,6 +15,12 @@ This is a small system tray app designed in Python to interpret one or two key p
 *   Press go
 *   Minimise the black debug window. NB: If you close it you are closing the app. 
 *   Note that all normal key entry is now disabled. To halt the script use a mouse to navigate to the system tray icon and quit the app
+
+**Tips for first use**
+
+* Open up the code chart document or print it!
+* Use notepad to test your typing skills
+* To get used to typing you have to first get used to the speed of things. Just try a e and a t for starters. 
 
 **Issues:**
 
