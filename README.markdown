@@ -306,7 +306,7 @@ Enjoy!
 
 ## License
 
-Morse.js is licensed under the MIT License:
+MorseWriter is licensed under the MIT License:
 
   Copyright (c) 2012 Will Wade (http://sourceymonkey.com/)
 
