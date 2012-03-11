@@ -50,7 +50,7 @@ For further research and reading material on the use of Morse in assistive techn
 * DavidDW for coding geniusness
 * [Darci USB for code conversion](http://www.westest.com/darci/index.html) 
 * Andy/Lisa/[ACE North](http://www.ace-north.org.uk/) for original thoughts 
-* [Jim Rubin and others](http://www.makoa.org/jlubin/morsecode.htm)
+* [Jim Lubin and others](http://www.makoa.org/jlubin/morsecode.htm)
 * [The Noun Project](http://thenounproject.com/) for the icon 
 
 Please contact me if you intend to fork this or do anything fun with it - will AT e-wade.net   
