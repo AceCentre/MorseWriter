@@ -302,7 +302,7 @@ Enjoy!
     </tr>
 </table>
 
-\*NB:To type Control+V you need to first go into repeat mode then type V.
+\*NB: To type Control+V you need to first go into repeat mode, then type Control and then type V. To release the CTRL, press repeat again
 
 ## License
 
