@@ -1,0 +1,368 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Morsewriter by willwade</title>
+    
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Morsewriter</h1>
+        <p>Small app to convert 1 or 2 key presses from morse into text and keyboard-mapped keys</p>
+        <p class="view"><a href="https://github.com/willwade/MorseWriter">View the Project on GitHub <small>willwade/MorseWriter</small></a></p>
+        <ul>
+          <li><a href="https://github.com/willwade/MorseWriter/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/willwade/MorseWriter/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/willwade/MorseWriter">Fork On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h2>MorseWriter</h2>
+
+<p>This is a small system tray app designed in Python to interpret one or two key presses pressed in a set way (morse) and convert them to the key equivalent. This should mean that a user who has good timing can access the entire computer to write and control their machine - potentially with one or two keys or switches. </p>
+
+<p>For code, bug tracking and feature requests see <a href="https://github.com/willwade/MorseWriter/">https://github.com/willwade/MorseWriter/</a></p>
+
+<p><strong>Requirements</strong></p>
+
+<p>Currently built for Windows. Let us know how you get on with different variants of Windows. Plan is to port this to Mac after v2. </p>
+
+<p><strong>Usage</strong></p>
+
+<ul>
+<li>  <a href="https://github.com/downloads/willwade/MorseWriter/MorseWriter.zip">Download the MorseWriter Application and Code Chart from here</a>
+</li>
+<li>  Run the MorseWriter.exe </li>
+<li>  Select your options</li>
+<li>  Note the two key option: the key on the left hand pull down menu relates to dit (*) and one on the right relates to dah (-)</li>
+<li>  Set your sounds</li>
+<li>  Press go</li>
+<li>  Minimise the black debug window. NB: If you close it you are closing the app. </li>
+<li>  Note that all normal key entry is now disabled. To halt the script use a mouse to navigate to the system tray icon and quit the app</li>
+</ul><p><strong>Tips for first use</strong></p>
+
+<ul>
+<li>Look at the the code chart below or the separate document. Have it handy or print it!</li>
+<li>Use notepad to test your typing skills</li>
+<li>To get used to typing you have to first get used to the speed of things. Just try a e and a t for starters. </li>
+</ul><p><strong>Issues:</strong></p>
+
+<ul>
+<li>Debug window needs to be minimised even if debug switched off</li>
+<li>If you set to two key mode you need to be careful not to set both keys as input</li>
+<li>1 &amp; 2 input keys relate to the keys above the letters on the keyboard - not a numeric keypad</li>
+<li>Sounds can't be edited - these are from the system folder </li>
+</ul><p><strong>Tips for Building yourself</strong></p>
+
+<p>You will need Python 2.6 or earlier for <a href="http://www.pyinstaller.org/">pyinstaller</a>. You will also need to install some extra libraries - notably <a href="http://sourceforge.net/projects/uncassist/">PyHook</a>, <a href="http://sourceforge.net/projects/pywin32/">PyWin32</a> and <a href="http://www.riverbankcomputing.com/software/pyqt/intro">PyQt</a></p>
+
+<pre><code>python Configure.py
+python Makespec.py --onefile path_to_your_morsecodegui.py 
+python Build.py path_to_the_Morsecodegui.spec
+</code></pre>
+
+<p><strong>Research</strong></p>
+
+<p>For further research and reading material on the use of Morse in assistive technology see <a href="http://www.citeulike.org/user/willwade/tag/morse">http://www.citeulike.org/user/willwade/tag/morse</a> as a starting point</p>
+
+<p><strong>Credits</strong></p>
+
+<ul>
+<li>DavidDW for coding geniusness</li>
+<li>
+<a href="http://www.westest.com/darci/index.html">Darci USB for code conversion</a> </li>
+<li>Andy/Lisa/<a href="http://www.ace-north.org.uk/">ACE North</a> for original thoughts </li>
+<li><a href="http://www.makoa.org/jlubin/morsecode.htm">Jim Lubin and others</a></li>
+<li>
+<a href="http://thenounproject.com/">The Noun Project</a> for the icon </li>
+</ul><p>Please contact me if you intend to fork this or do anything fun with it - will AT e-wade.net   </p>
+
+<p>Enjoy!</p>
+
+<table border="0" cellspacing="0" cellpadding="0">
+<tr>
+<th colspan="6">MorseWriter Key Codes</th>
+    </tr>
+<tr>
+<td> <br>
+        A<br>•— </td>
+        <td> <br>
+        B<br>—••• </td>
+        <td> <br>
+        C<br>—•—• </td>
+        <td> <br>
+        D<br>—•• </td>
+        <td> <br>
+        E<br>•<br>
+</td>
+        <td> <br>
+        F<br>••—• </td>
+    </tr>
+<tr>
+<td> <br>
+        G<br>——• </td>
+        <td> <br>
+        H<br>•••• </td>
+        <td> <br>
+        I<br>•• </td>
+        <td> <br>
+        J<br>•——— </td>
+        <td> <br>
+        K<br>—•— </td>
+        <td> <br>
+        L<br>•—•• </td>
+    </tr>
+<tr>
+<td> <br>
+        M<br>—— </td>
+        <td> <br>
+        N<br>—• </td>
+        <td> <br>
+        O<br>——— </td>
+        <td> <br>
+        P<br>•——• </td>
+        <td> <br>
+        Q<br>——•— </td>
+        <td> <br>
+        R<br>•—• </td>
+    </tr>
+<tr>
+<td> <br>
+        S<br>••• </td>
+        <td> <br>
+        T<br>             — </td>
+        <td> <br>
+        U<br>••— </td>
+        <td> <br>
+        V<br>•••— </td>
+        <td> <br>
+        W<br>•—— </td>
+        <td> <br>
+        X<br>—••— </td>
+    </tr>
+<tr>
+<td> <br>
+        Y<br>—•—— </td>
+        <td> <br>
+        Z<br>——•• </td>
+        <td> <br>
+        1<br>•———— </td>
+        <td> <br>
+        2<br>••——— </td>
+        <td> <br>
+        3<br>•••—— </td>
+        <td> <br>
+        4<br>••••— </td>
+    </tr>
+<tr>
+<td> <br>
+        5<br>••••• </td>
+        <td> <br>
+        6<br>—•••• </td>
+        <td> <br>
+        7<br>——••• </td>
+        <td> <br>
+        8<br>———•• </td>
+        <td> <br>
+        9<br>————• </td>
+        <td> <br>
+        0<br>————— </td>
+    </tr>
+<tr>
+<td> <br>
+           .<br>•—•—•— </td>
+        <td> <br>
+        ,<br>——••—— </td>
+        <td> <br>
+        ‌<br>••——•• </td>
+        <td> <br>
+        !<br>•—••—— </td>
+        <td> <br>
+        :<br>—•—•—• </td>
+        <td> <br>
+        ;<br>•••—• </td>
+    </tr>
+<tr>
+<td> <br>
+        @<br>    •———• </td>
+        <td> <br>
+        #<br>     —•——— </td>
+        <td> <br>
+        $<br>—•••—• </td>
+        <td> <br>
+        %<br>•——•—• </td>
+        <td> <br>
+        &amp;<br>—••—— </td>
+        <td> <br>
+        ∗<br>•—••• </td>
+    </tr>
+<tr>
+<td> <br>
+        +<br>•——•• </td>
+        <td> <br>
+        —<br>———• </td>
+        <td> <br>
+        =<br>•——•— </td>
+        <td> <br>
+        /<br>——••— </td>
+        <td> <br>
+         \<br>—••••• </td>
+        <td> <br>
+        '<br>•—•——• </td>
+    </tr>
+<tr>
+<td> <br>
+        "<br>——•—— </td>
+        <td> <br>
+        (<br>•••——• </td>
+        <td> <br>
+        )<br>—••——• </td>
+        <td> <br>•—•••— </td>
+        <td> <br>
+         &gt;<br>——••—• </td>
+        <td> <br>
+        ^<br>—•—••— </td>
+    </tr>
+<tr>
+<td> <br>
+        Enter <br>
+        •—•— </td>
+        <td> <br>
+        Space <br>
+          <br>••—— </td>
+        <td> <br>
+        Back<br> Space <br>
+        ———— </td>
+        <td> <br>
+        Tab <br>
+        —•——• </td>
+        <td> <br>
+        Tab<br> Left <br>
+        ——•—•• </td>
+        <td> <br>
+        Uderscore<br><br>
+        ••——• </td>
+    </tr>
+<tr>
+<td> <br>
+        Page<br> Up <br>
+        ———••— </td>
+        <td> <br>
+        Page<br> Dwn <br>
+        ———•—• </td>
+        <td> <br>
+        Left<br> Arrow <br>
+        ————•— </td>
+        <td> <br>
+        Right<br> Arrow <br>
+        —————• </td>
+        <td> <br>
+        Up<br> Arrow <br>
+        ————•• </td>
+        <td> <br>
+        Down<br> Arrow <br>
+        —————— </td>
+    </tr>
+<tr>
+<td> <br>
+        Escape <br>
+        ••—•• </td>
+        <td> <br>
+        Home <br>
+        ••••—• </td>
+        <td> <br>
+        End <br>
+        —•—•• </td>
+        <td> <br>
+        Insert <br>
+        •—••— </td>
+        <td> <br>
+        Delete <br>
+        —••—• </td>
+        <td> <br>
+        Start<br> Menu <br>
+        ——•••• </td>
+    </tr>
+<tr>
+<th colspan="6"> 
+            Modifier Keys
+        </th>
+    </tr>
+<tr>
+<td> <br>
+        Shift <br>
+        ••—•— </td>
+        <td> <br>
+        Alt <br>
+        •—•—— </td>
+        <td> <br>
+        Ctrl <br>
+        —•—•— </td>
+        <td> <br>
+        Windows <br>
+        ••—•—— </td>
+        <td colspan="3"> <br>
+        Application<br> Key <br>
+        —•••—— </td>
+    </tr>
+<tr>
+<th colspan="6"> 
+            Command Keys
+        </th>
+    </tr>
+<tr>
+<td> <br>
+        Caps Lock <br>
+        ••—•—• </td>
+        <td colspan="5"> <br>
+        Repeat Mode* <br>
+        •—••—• </td>
+    </tr>
+<tr>
+<td colspan="6">
+<b>Function Keys</b><br>
+        F1 — F10<br> dot + number (F1 = ••————)<br>F11 &amp; F12<br> dash + number (F11 =—•————) </td>
+    </tr>
+</table><p>*NB: To type Control+V you need to first go into repeat mode, then type Control and then type V. To release the CTRL, press repeat again</p>
+
+<h2>License</h2>
+
+<p>MorseWriter is licensed under the MIT License:</p>
+
+<p>Copyright (c) 2012 Will Wade (<a href="http://sourceymonkey.com/">http://sourceymonkey.com/</a>)</p>
+
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.</p>
+
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/willwade">willwade</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
