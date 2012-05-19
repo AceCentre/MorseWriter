@@ -1,37 +1,40 @@
 MorseWriter
 -----------
 
+![](https://github.com/willwade/MorseWriter/master/icon.png)
+
 This is a small system tray app designed in Python to interpret one or two key presses pressed in a set way (morse) and convert them to the key equivalent. This should mean that a user who has good timing can access the entire computer to write and control their machine - potentially with one or two keys or switches. 
 
 For code, bug tracking and feature requests see [https://github.com/willwade/MorseWriter/](https://github.com/willwade/MorseWriter/)
 
 **Requirements**
 
-Currently built for Windows. Let us know how you get on with different variants of Windows. Plan is to port this to Mac after v2. 
+Currently built for Windows. Let us know how you get on with different variants of Windows. Plan is to port this to Mac at some point. 
 
 **Usage**
 
-*   [Download the MorseWriter Application and Code Chart from here](https://github.com/downloads/willwade/MorseWriter/MorseWriter.zip)
+*   [Download the MorseWriter Application and Code Chart from here](https://github.com/downloads/willwade/MorseWriter/MorseWriterv2.zip)
 *   Run the MorseWriter.exe 
 *   Select your options
 *   Note the two key option: the key on the left hand pull down menu relates to dit (*) and one on the right relates to dah (-)
-*   Set your sounds
+*   If you want to use a third key for the return character (removing the need for good timing) then you can do that with the third dropdown
 *   Press go
+*   Minimise the coding window if needed
 *   Minimise the black debug window. NB: If you close it you are closing the app. 
 *   Note that all normal key entry is now disabled. To halt the script use a mouse to navigate to the system tray icon and quit the app
+*   If you want to escape morse entry : ctrl+shift+p will pause it. 
 
 **Tips for first use**
 
-* Look at the the code chart below or the separate document. Have it handy or print it!
+* Look at the the code chart below or the coding window. Have it handy or print it!
 * Use notepad to test your typing skills
 * To get used to typing you have to first get used to the speed of things. Just try a e and a t for starters. 
+* Getting auditory feedback on the key entered may be useful. In which case you may find [this additional program](https://github.com/willwade/Scripting-Recipes-for-AT/tree/master/Autohotkey/SoundingKeyboardMouse#keyboard-sounder) of use. 
 
 **Issues:**
 
 * Debug window needs to be minimised even if debug switched off
-* If you set to two key mode you need to be careful not to set both keys as input
 * 1 & 2 input keys relate to the keys above the letters on the keyboard - not a numeric keypad
-* Sounds can't be edited - these are from the system folder 
 
 **Tips for Building yourself**
 
