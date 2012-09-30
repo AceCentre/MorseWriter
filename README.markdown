@@ -44,6 +44,13 @@ You will need Python 2.6 or earlier for [pyinstaller](http://www.pyinstaller.org
     python Makespec.py --onefile path_to_your_morsecodegui.py 
     python Build.py path_to_the_Morsecodegui.spec
 
+**Getting Involved**
+
+In order to start contributing code to the project, follow the steps below:
+
+1. Fork this repo. For detailed instructions visit [http://help.github.com/fork-a-repo/](http://help.github.com/fork-a-repo/)
+2. Hack away! but please make sure you follow [this branching model] (http://nvie.com/posts/a-successful-git-branching-model/). That means, make your pull requests against the **develop** branch, not the **master** branch.
+
 **Research**
 
 For further research and reading material on the use of Morse in assistive technology see [http://www.citeulike.org/user/willwade/tag/morse](http://www.citeulike.org/user/willwade/tag/morse) as a starting point
