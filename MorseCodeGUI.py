@@ -21,59 +21,56 @@ currentY = 0
 
 def PressKey(down, key):
     win32api.keybd_event(key, 0, (not down) * win32con.KEYEVENTF_KEYUP)
+    print("hello claire")
+
+def PressKey(down, key):
+    win32api.keybd_event(key, 0, (not down) * win32con.KEYEVENTF_KEYUP)
 
 def TypeKey(key, keystroke_time=10):
     PressKey(True, key)
     PressKey(False, key)
+    print("hello claire")
 
 def endCharacter():
-    print "End Character"
+    print("End Character")
     global currentCharacter, hm, repeaton, repeatkey,  mousemode, currentX, currentY, allchars, mousechars
-        
-    x = ""
-    for i in currentCharacter:
-        x += str(i)
-    #print("X: " + x + " = " + hex(normalmapping.get(x)))
-    hm.KeyDown = 0
-    hm.KeyUp = 0
-    if (not mousemode):
-        temp = normalmapping.get(x)
-        if (temp != None):
-            key = temp[0]
-            if (key != None):
-                if (key == actions.REPEATMODE):
-                    if (repeaton == True):
-                        if myConfig['debug']:
-                            print("repeat OFF")
-                            repeaton = False
-                            repeatkey = None
-                        else:
-                            if myConfig['debug']:
-                                print("repeat ON")
-                            repeaton = True
-                else: 
-                    if (repeaton):
-                        if (repeatkey == None):
-                            repeatkey = key
-                        else:
-                            if myConfig['debug']:
-                                print("repeat code: ", repeatkey, " + ", key)
-                            PressKey(True, repeatkey)
-                            TypeKey(key)
-                            PressKey(False, repeatkey)
-                            
-                    else:
-                        if myConfig['debug']:
-                            print("code found: ", key)
-                        if (key == actions.MOUSEMODE[0]):
-                            mousemode = True
-                            #mousechars.show()
-                            allchars.emit(SIGNAL("h()"))
-                            mousechars.emit(SIGNAL("s()"))
-                            currentX, currentY = win32api.GetCursorPos()
-                        else:
-                            TypeKey(key) 
-                            win32api.VkKeyScan('1')
+
+    # THJSC IS A COMMENT
+    key = temp[0]
+    if (key != None):
+        if (key == actions.REPEATMODE):
+            if (repeaton == True):
+                if myConfig['debug']:
+                    print("repeat OFF")
+                    repeaton = False
+                    repeatkey = None
+                else:
+                    if myConfig['debug']:
+                        print("repeat ON")
+                    repeaton = True
+        else: 
+            if (repeaton):
+                if (repeatkey == None):
+                    repeatkey = key
+                else:
+                    if myConfig['debug']:
+                        print("repeat code: ", repeatkey, " + ", key)
+                    PressKey(True, repeatkey)
+                    TypeKey(key)
+                    PressKey(False, repeatkey)
+                
+            else:
+                if myConfig['debug']:
+                    print("code found: ", key)
+                if (key == actions.MOUSEMODE[0]):
+                    mousemode = True
+                    #mousechars.show()
+                    allchars.emit(SIGNAL("h()"))
+                    mousechars.emit(SIGNAL("s()"))
+                    currentX, currentY = win32api.GetCursorPos()
+                else:
+                    TypeKey(key) 
+                    win32api.VkKeyScan('1')
     #        print "X: " + str(normalmapping.get(x)) 
     else:
         temp = mousemapping.get(x)
@@ -212,13 +209,13 @@ def OnKeyboardEventDown(event):
     
     if myConfig['debug']:
         print("Key down: ", event.Key, "   ", event.KeyID, "    ", str(event))
-        print 'MessageName:',event.MessageName
-        print 'Message:',event.Message
-        print 'Time:',event.Time
-        print 'Ascii:', event.Ascii, chr(event.Ascii)
-        print 'Key:', event.Key
-        print 'KeyID:', event.KeyID
-        print 'ScanCode:', event.ScanCode
+        print('MessageName:',event.MessageName)
+        print('Message:',event.Message)
+        print('Time:',event.Time)
+        print('Ascii:', event.Ascii, chr(event.Ascii))
+        print('Key:', event.Key)
+        print('KeyID:', event.KeyID)
+        print('ScanCode:', event.ScanCode)
 #    if (myConfig['onekey']):
 #        if ((event.KeyID != myConfig['keyone']) or (lastkeydowntime != -1)):
 #            return False
@@ -247,13 +244,13 @@ def OnKeyboardEventDown(event):
 
 def moveMouse():
     global currentX, currentY
-    print "movemouse: " + str(currentX) + " / " + str(currentY) 
+    print("movemouse: " + str(currentX) + " / " + str(currentY))
     if (win32api.SetCursorPos((currentX,currentY)) == True):
-        print win32api.GetLastError()
-        print "OK"
+        print(win32api.GetLastError())
+        print("OK")
     else:
-        print win32api.GetLastError() 
-        print "NOT OK"
+        print(win32api.GetLastError())
+        print("NOT OK")
         
 
 def leftClickMouse():
@@ -382,7 +379,7 @@ def getPossibleCombos(currentCharacter):
     for action in normalmapping:
         if (len(action) >= len(x) and action[:len(x)] == x):
             possibleactions.append(action)
-    print "possible: " + str(possibleactions) 
+    print("possible: " + str(possibleactions))
     
 #unused
 def parseConfigFile():
@@ -548,7 +545,7 @@ class Window(QtGui.QDialog):
         myConfig['debug'] = self.withDebug.isChecked()
         myConfig['off'] = False
         if myConfig['debug']:
-            print "Config: " + str(myConfig['onekey']) + " / " + str(myConfig['keyone']) + " / " + str(myConfig['keytwo']) + " / " + str(myConfig['keythree']) + " / " + str(myConfig['maxDitTime']) + " / " + str(myConfig['minLetterPause'])
+            print("Config: " + str(myConfig['onekey']) + " / " + str(myConfig['keyone']) + " / " + str(myConfig['keytwo']) + " / " + str(myConfig['keythree']) + " / " + str(myConfig['maxDitTime']) + " / " + str(myConfig['minLetterPause']))
         
 
         Init()
