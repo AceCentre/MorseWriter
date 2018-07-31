@@ -3,10 +3,13 @@
 # This is only needed for Python v2 but is harmless for Python v3.
 import sip
 sip.setapi('QVariant', 1)
-import pyHook, win32con, win32api, time, pythoncom, ConfigParser, sys, threading, winsound, icons_rc, atexit
-from ordereddict import *
-from PyQt4 import QtCore, QtGui
-from PyQt4.QtCore import pyqtSignal, SIGNAL, SLOT
+import PyHook3, win32con, win32api, time, pythoncom, configparser, sys, threading, winsound, icons_rc, atexit
+from collections import OrderedDict
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QVBoxLayout, QDialog, QWidget, QApplication, QSystemTrayIcon, QGroupBox, QRadioButton, \
+  QMessageBox, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QLineEdit, QGridLayout, QCheckBox, QPushButton, QAction, \
+  QMenu
 
 lastkeydowntime = -1
 
@@ -19,26 +22,132 @@ mousemode = False
 currentX = 0
 currentY = 0
 
-def PressKey(down, key):
-    win32api.keybd_event(key, 0, (not down) * win32con.KEYEVENTF_KEYUP)
-    print("hello claire")
+pressingKey = False
 
 def PressKey(down, key):
+    global pressingKey
+    pressingKey = True
     win32api.keybd_event(key, 0, (not down) * win32con.KEYEVENTF_KEYUP)
+    pressingKey = False
 
 def TypeKey(key, keystroke_time=10):
     PressKey(True, key)
     PressKey(False, key)
-    print("hello claire")
+    if myConfig['debug']:
+        print("typekey, ", key)
 
 def endCharacter():
-    print("End Character")
+    if myConfig['debug']:
+        print("End Character")
     global currentCharacter, hm, repeaton, repeatkey,  mousemode, currentX, currentY, allchars, mousechars
-
-    # THJSC IS A COMMENT
-    key = temp[0]
-    if (key != None):
-        if (key == actions.REPEATMODE):
+    morse = "".join(map(str, currentCharacter))
+    if mousemode:
+        action = mousemapping.get(morse, None)
+    else: # normal mode
+        action = normalmapping.get(morse, None)
+    if myConfig['debug']:
+        print("action: ", action)
+    if action != None:
+        key = action[0]
+        if (key == actions.NORMALMODE[0]):
+            mousemode = False
+            allchars.showSignal.emit()
+            mousechars.hideSignal.emit()
+        elif (key == actions.MOUSEUP5[0]):
+            currentY += -5
+            moveMouse()
+        elif (key == actions.MOUSEDOWN5[0]):
+            currentY += 5
+            moveMouse()
+        elif (key == actions.MOUSELEFT5[0]):
+            currentX += -5
+            moveMouse()
+        elif (key == actions.MOUSERIGHT5[0]):
+            currentX += 5
+            moveMouse()
+        elif (key == actions.MOUSEUPLEFT5[0]):
+            currentX += -5
+            currentY += -5
+            moveMouse()
+        elif (key == actions.MOUSEUPRIGHT5[0]):
+            currentX += 5
+            currentY += -5
+            moveMouse()
+        elif (key == actions.MOUSEDOWNLEFT5[0]):
+            currentX += -5
+            currentY += 5
+            moveMouse()
+        elif (key == actions.MOUSEDOWNRIGHT5[0]):
+            currentX += 5
+            currentY += 5
+            moveMouse()
+        elif (key == actions.MOUSEUP40[0]):
+            currentY += -40
+            moveMouse()
+        elif (key == actions.MOUSEDOWN40[0]):
+            currentY += 40
+            moveMouse()
+        elif (key == actions.MOUSELEFT40[0]):
+            currentX += -40
+            moveMouse()
+        elif (key == actions.MOUSERIGHT40[0]):
+            currentX += 40
+            moveMouse()
+        elif (key == actions.MOUSEUPLEFT40[0]):
+            currentX += -40
+            currentY += -40
+            moveMouse()
+        elif (key == actions.MOUSEUPRIGHT40[0]):
+            currentX += 40
+            currentY += -40
+            moveMouse()
+        elif (key == actions.MOUSEDOWNLEFT40[0]):
+            currentX += -40
+            currentY += 40
+            moveMouse()
+        elif (key == actions.MOUSEDOWNRIGHT40[0]):
+            currentX += 40
+            currentY += 40
+            moveMouse()
+        elif (key == actions.MOUSEUP250[0]):
+            currentY += -250
+            moveMouse()
+        elif (key == actions.MOUSEDOWN250[0]):
+            currentY += 250
+            moveMouse()
+        elif (key == actions.MOUSELEFT250[0]):
+            currentX += -250
+            moveMouse()
+        elif (key == actions.MOUSERIGHT250[0]):
+            currentX += 250
+            moveMouse()
+        elif (key == actions.MOUSEUPLEFT250[0]):
+            currentX += -250
+            currentY += -250
+            moveMouse()
+        elif (key == actions.MOUSEUPRIGHT250[0]):
+            currentX += 250
+            currentY += -250
+            moveMouse()
+        elif (key == actions.MOUSEDOWNLEFT250[0]):
+            currentX += -250
+            currentY += 250
+            moveMouse()
+        elif (key == actions.MOUSEDOWNRIGHT250[0]):
+            currentX += 250
+            currentY += 250
+            moveMouse()
+        elif (key == actions.MOUSECLICKLEFT[0]):
+            leftClickMouse()
+        elif (key == actions.MOUSECLICKRIGHT[0]):
+            rightClickMouse()
+        elif (key == actions.MOUSECLKHLDLEFT[0]):
+            leftMouseDown()
+        elif (key == actions.MOUSECLKHLDRIGHT[0]):
+            rightMouseDown()
+        elif (key == actions.MOUSERELEASEHOLD[0]):
+            releaseMouseDown()
+        elif (key == actions.REPEATMODE[0]):
             if (repeaton == True):
                 if myConfig['debug']:
                     print("repeat OFF")
@@ -48,6 +157,12 @@ def endCharacter():
                     if myConfig['debug']:
                         print("repeat ON")
                     repeaton = True
+        elif (key == actions.MOUSEMODE[0]):
+            mousemode = True
+            #mousechars.show()
+            allchars.hideSignal.emit()
+            mousechars.showSignal.emit()
+            currentX, currentY = win32api.GetCursorPos()
         else: 
             if (repeaton):
                 if (repeatkey == None):
@@ -58,122 +173,11 @@ def endCharacter():
                     PressKey(True, repeatkey)
                     TypeKey(key)
                     PressKey(False, repeatkey)
-                
             else:
                 if myConfig['debug']:
                     print("code found: ", key)
-                if (key == actions.MOUSEMODE[0]):
-                    mousemode = True
-                    #mousechars.show()
-                    allchars.emit(SIGNAL("h()"))
-                    mousechars.emit(SIGNAL("s()"))
-                    currentX, currentY = win32api.GetCursorPos()
-                else:
-                    TypeKey(key) 
-                    win32api.VkKeyScan('1')
-    #        print "X: " + str(normalmapping.get(x)) 
-    else:
-        temp = mousemapping.get(x)
-        if (temp != None):
-            key = temp[0]
-            if (key == actions.NORMALMODE[0]):
-                mousemode = False
-                allchars.emit(SIGNAL("s()"))
-                mousechars.emit(SIGNAL("h()"))
-            elif (key == actions.MOUSEUP5[0]):
-                currentY += -5
-                moveMouse()
-            elif (key == actions.MOUSEDOWN5[0]):
-                currentY += 5
-                moveMouse()
-            elif (key == actions.MOUSELEFT5[0]):
-                currentX += -5
-                moveMouse()
-            elif (key == actions.MOUSERIGHT5[0]):
-                currentX += 5
-                moveMouse()
-            elif (key == actions.MOUSEUPLEFT5[0]):
-                currentX += -5
-                currentY += -5
-                moveMouse()
-            elif (key == actions.MOUSEUPRIGHT5[0]):
-                currentX += 5
-                currentY += -5
-                moveMouse()
-            elif (key == actions.MOUSEDOWNLEFT5[0]):
-                currentX += -5
-                currentY += 5
-                moveMouse()
-            elif (key == actions.MOUSEDOWNRIGHT5[0]):
-                currentX += 5
-                currentY += 5
-                moveMouse()
-            elif (key == actions.MOUSEUP40[0]):
-                currentY += -40
-                moveMouse()
-            elif (key == actions.MOUSEDOWN40[0]):
-                currentY += 40
-                moveMouse()
-            elif (key == actions.MOUSELEFT40[0]):
-                currentX += -40
-                moveMouse()
-            elif (key == actions.MOUSERIGHT40[0]):
-                currentX += 40
-                moveMouse()
-            elif (key == actions.MOUSEUPLEFT40[0]):
-                currentX += -40
-                currentY += -40
-                moveMouse()
-            elif (key == actions.MOUSEUPRIGHT40[0]):
-                currentX += 40
-                currentY += -40
-                moveMouse()
-            elif (key == actions.MOUSEDOWNLEFT40[0]):
-                currentX += -40
-                currentY += 40
-                moveMouse()
-            elif (key == actions.MOUSEDOWNRIGHT40[0]):
-                currentX += 40
-                currentY += 40
-                moveMouse()
-            elif (key == actions.MOUSEUP250[0]):
-                currentY += -250
-                moveMouse()
-            elif (key == actions.MOUSEDOWN250[0]):
-                currentY += 250
-                moveMouse()
-            elif (key == actions.MOUSELEFT250[0]):
-                currentX += -250
-                moveMouse()
-            elif (key == actions.MOUSERIGHT250[0]):
-                currentX += 250
-                moveMouse()
-            elif (key == actions.MOUSEUPLEFT250[0]):
-                currentX += -250
-                currentY += -250
-                moveMouse()
-            elif (key == actions.MOUSEUPRIGHT250[0]):
-                currentX += 250
-                currentY += -250
-                moveMouse()
-            elif (key == actions.MOUSEDOWNLEFT250[0]):
-                currentX += -250
-                currentY += 250
-                moveMouse()
-            elif (key == actions.MOUSEDOWNRIGHT250[0]):
-                currentX += 250
-                currentY += 250
-                moveMouse()
-            elif (key == actions.MOUSECLICKLEFT[0]):
-                leftClickMouse()
-            elif (key == actions.MOUSECLICKRIGHT[0]):
-                rightClickMouse()
-            elif (key == actions.MOUSECLKHLDLEFT[0]):
-                leftMouseDown()
-            elif (key == actions.MOUSECLKHLDRIGHT[0]):
-                rightMouseDown()
-            elif (key == actions.MOUSERELEASEHOLD[0]):
-                releaseMouseDown()
+                #win32api.VkKeyScan('1')
+                TypeKey(key) 
     hm.KeyDown = OnKeyboardEventDown
     hm.KeyUp = OnKeyboardEventUp
     currentCharacter = []
@@ -182,11 +186,15 @@ def endCharacter():
     return
 
 def disableKeyUpDown(event):
-    return False;
+    if pressingKey:
+        return True
+    return False
 
 def OnKeyboardEventDown(event):
     global lastkeydowntime, endCharacterTimer, myConfig, ctrlpressed, shiftpressed, disabled
     #print "eventid: " + str(event.KeyID)
+    if pressingKey:
+        return True
     if (event.KeyID == 162 or event.KeyID == 163):
         ctrlpressed = True
     if (event.KeyID == 160 or event.KeyID == 161):
@@ -229,7 +237,7 @@ def OnKeyboardEventDown(event):
             return False
     else:  #threekey
         if (((event.KeyID != myConfig['keyone']) and (event.KeyID != myConfig['keytwo']) and (event.KeyID != myConfig['keythree'])) or (lastkeydowntime != -1)):
-            return False    
+            return False
     try:
         endCharacterTimer.cancel()
         if (event.KeyID == myConfig['keythree']):
@@ -239,7 +247,6 @@ def OnKeyboardEventDown(event):
     lastkeydowntime = event.Time
     hm.KeyDown = disableKeyUpDown
     hm.KeyUp = OnKeyboardEventUp
-     
     return False
 
 def moveMouse():
@@ -287,6 +294,8 @@ def enum(**enums):
 def OnKeyboardEventUp(event):
     global lastkeydowntime, MyEvents, currentCharacter, endCharacterTimer, hm, myConfig, disabled
 
+    if pressingKey:
+        return True
     if (event.KeyID == 162 or event.KeyID == 163):
         ctrlpressed = False
     if (event.KeyID == 160 or event.KeyID == 161):
@@ -325,12 +334,12 @@ def OnKeyboardEventUp(event):
         if (msSinceLastKeyDown < float(myConfig['maxDitTime'])):
             addDit()
             if (myConfig['withsound']):
-                winsound.MessageBeep(myConfig['SoundDit'].toInt()[0])
+                winsound.MessageBeep(myConfig['SoundDit'])
             #print(currentCharacter)
         else:
             addDah()
             if (myConfig['withsound']):
-                winsound.MessageBeep(myConfig['SoundDah'].toInt()[0])
+                winsound.MessageBeep(myConfig['SoundDah'])
             #print(currentCharacter)       
         if myConfig['debug']:
             print("Duration of keypress: " + str(msSinceLastKeyDown))
@@ -338,11 +347,11 @@ def OnKeyboardEventUp(event):
         if (event.KeyID == myConfig['keyone']):
             addDit()
             if (myConfig['withsound']):
-                winsound.MessageBeep(myConfig['SoundDit'].toInt()[0])
+                winsound.MessageBeep(myConfig['SoundDit'])
         else:
             addDah()
             if (myConfig['withsound']):
-                winsound.MessageBeep(myConfig['SoundDah'].toInt()[0])
+                winsound.MessageBeep(myConfig['SoundDah'])
             
     hm.KeyDown = OnKeyboardEventDown
     hm.KeyUp = disableKeyUpDown
@@ -384,7 +393,7 @@ def getPossibleCombos(currentCharacter):
 #unused
 def parseConfigFile():
     global maxDitTime, minLetterPause, debug
-    config = ConfigParser.RawConfigParser()
+    config = configparser.RawConfigParser()
     config.read('MorseCode.cfg')
     config.sections
     maxDitTime = config.getint('Input', 'maxDitTime')
@@ -482,13 +491,13 @@ def Init():
 
 def Go():
     global hm
-    hm = pyHook.HookManager()
+    hm = PyHook3.HookManager()
     hm.KeyDown = OnKeyboardEventDown
     hm.KeyUp = OnKeyboardEventUp
     hm.HookKeyboard()
     pythoncom.PumpMessages()
 
-class Window(QtGui.QDialog):
+class Window(QDialog):
     def __init__(self):
         super(Window, self).__init__()
 
@@ -502,7 +511,7 @@ class Window(QtGui.QDialog):
         self.GOButton.clicked.connect(self.goForIt)
         
         self.withSound.clicked.connect(self.updateAudioProperties)
-        mainLayout = QtGui.QVBoxLayout()
+        mainLayout = QVBoxLayout()
         mainLayout.addWidget(self.iconGroupBox)
         self.setLayout(mainLayout)
         
@@ -524,7 +533,7 @@ class Window(QtGui.QDialog):
     def goForIt(self):
         global myConfig
         if self.trayIcon.isVisible():
-            QtGui.QMessageBox.information(self, "MorseWriter", "The program will run in the system tray. To terminate the program, choose <b>Quit</b> in the context menu of the system tray entry.")
+            QMessageBox.information(self, "MorseWriter", "The program will run in the system tray. To terminate the program, choose <b>Quit</b> in the context menu of the system tray entry.")
             self.hide()
         
         myConfig = dict();
@@ -547,7 +556,6 @@ class Window(QtGui.QDialog):
         if myConfig['debug']:
             print("Config: " + str(myConfig['onekey']) + " / " + str(myConfig['keyone']) + " / " + str(myConfig['keytwo']) + " / " + str(myConfig['keythree']) + " / " + str(myConfig['maxDitTime']) + " / " + str(myConfig['minLetterPause']))
         
-
         Init()
         Go()
 
@@ -558,41 +566,41 @@ class Window(QtGui.QDialog):
         super(Window, self).setVisible(visible)
 
     def closeEvent(self, event):
-        QtGui.qApp.quit
+        app.quit
         sys.exit()
         
     def setIcon(self):
-        icon = QtGui.QIcon(':/morse-writer.ico')
+        icon = QIcon(':/morse-writer.ico')
         self.trayIcon.setIcon(icon)
         self.setWindowIcon(icon)
 
     def iconActivated(self, reason):
-        if reason in (QtGui.QSystemTrayIcon.Trigger, QtGui.QSystemTrayIcon.DoubleClick):
-            self.iconComboBox.setCurrentIndex((self.iconComboBox.currentIndex() + 1) % self.iconComboBox.count())
-        elif reason == QtGui.QSystemTrayIcon.MiddleClick:
+        #if reason in (QSystemTrayIcon.Trigger, QSystemTrayIcon.DoubleClick):
+        #     self.iconComboBox.setCurrentIndex((self.iconComboBox.currentIndex() + 1) % self.iconComboBox.count())
+        if reason == QSystemTrayIcon.MiddleClick:
             self.showMessage()
 
     def showMessage(self):
-        icon = QtGui.QSystemTrayIcon.MessageIcon(self.typeComboBox.itemData(self.typeComboBox.currentIndex()))
+        icon = QSystemTrayIcon.MessageIcon(self.typeComboBox.itemData(self.typeComboBox.currentIndex()))
         self.trayIcon.showMessage(self.titleEdit.text(), self.bodyEdit.toPlainText(), icon, self.durationSpinBox.value() * 1000)
 
     def createIconGroupBox(self):
-        self.iconGroupBox = QtGui.QGroupBox("Input Settings")
+        self.iconGroupBox = QGroupBox("Input Settings")
         
-        self.keySelectionRadioOneKey = QtGui.QRadioButton("One Key");
-        self.keySelectionRadioTwoKey = QtGui.QRadioButton("Two Key");
-        self.keySelectionRadioThreeKey = QtGui.QRadioButton("Three Key");
+        self.keySelectionRadioOneKey = QRadioButton("One Key");
+        self.keySelectionRadioTwoKey = QRadioButton("Two Key");
+        self.keySelectionRadioThreeKey = QRadioButton("Three Key");
         
-        inputSettingsLayout = QtGui.QVBoxLayout()
+        inputSettingsLayout = QVBoxLayout()
         
-        inputRadioButtonsLayout = QtGui.QHBoxLayout()
+        inputRadioButtonsLayout = QHBoxLayout()
         inputRadioButtonsLayout.addWidget(self.keySelectionRadioOneKey)
         inputRadioButtonsLayout.addWidget(self.keySelectionRadioTwoKey)
         inputRadioButtonsLayout.addWidget(self.keySelectionRadioThreeKey)
         inputSettingsLayout.addLayout(inputRadioButtonsLayout)       
 
-        inputKeyComboBoxesLayout = QtGui.QHBoxLayout()
-        self.iconComboBoxKeyOne = QtGui.QComboBox()
+        inputKeyComboBoxesLayout = QHBoxLayout()
+        self.iconComboBoxKeyOne = QComboBox()
         self.iconComboBoxKeyOne.addItem("SPACE", win32con.VK_SPACE)
         self.iconComboBoxKeyOne.addItem("ENTER", win32con.VK_RETURN)
         self.iconComboBoxKeyOne.addItem("1", win32api.VkKeyScan('1'))
@@ -601,12 +609,12 @@ class Window(QtGui.QDialog):
         self.iconComboBoxKeyOne.addItem("X", win32api.VkKeyScan('x'))
         self.iconComboBoxKeyOne.addItem("F8", win32con.VK_F8)
         self.iconComboBoxKeyOne.addItem("F9", win32con.VK_F9)
-        self.iconComboBoxKeyTwo = QtGui.QComboBox()
+        self.iconComboBoxKeyTwo = QComboBox()
         self.iconComboBoxKeyTwo.addItem("ENTER", win32con.VK_RETURN)
         self.iconComboBoxKeyTwo.addItem("2", win32api.VkKeyScan('2'))
         self.iconComboBoxKeyTwo.addItem("Z", win32api.VkKeyScan('z'))
         self.iconComboBoxKeyTwo.addItem("F8", win32con.VK_F8)
-        self.iconComboBoxKeyThree = QtGui.QComboBox()
+        self.iconComboBoxKeyThree = QComboBox()
         self.iconComboBoxKeyThree.addItem("Right Ctrl", win32con.VK_RCONTROL)
         self.iconComboBoxKeyThree.addItem("left Ctrl", win32con.VK_LCONTROL)
         self.iconComboBoxKeyThree.addItem("Right Shift", win32con.VK_RSHIFT)
@@ -625,11 +633,11 @@ class Window(QtGui.QDialog):
         self.keySelectionRadioOneKey.click();     
 
         
-        maxDitTimeLabel = QtGui.QLabel("MaxDitTime (ms):")
-        self.maxDitTimeEdit = QtGui.QLineEdit("350")
-        minLetterPauseLabel = QtGui.QLabel("minLetterPause (ms):")
-        self.minLetterPauseEdit = QtGui.QLineEdit("1000")
-        TimingsLayout = QtGui.QGridLayout()
+        maxDitTimeLabel = QLabel("MaxDitTime (ms):")
+        self.maxDitTimeEdit = QLineEdit("350")
+        minLetterPauseLabel = QLabel("minLetterPause (ms):")
+        self.minLetterPauseEdit = QLineEdit("1000")
+        TimingsLayout = QGridLayout()
         TimingsLayout.addWidget(maxDitTimeLabel, 0, 0)
         TimingsLayout.addWidget(self.maxDitTimeEdit, 0, 1, 1, 4)
         TimingsLayout.addWidget(minLetterPauseLabel, 1, 0)
@@ -637,15 +645,15 @@ class Window(QtGui.QDialog):
         TimingsLayout.setRowStretch(4, 1)
         inputSettingsLayout.addLayout(TimingsLayout)
         
-        self.withDebug = QtGui.QCheckBox("Debug On")
+        self.withDebug = QCheckBox("Debug On")
         self.withDebug.setChecked(False)
         inputSettingsLayout.addWidget(self.withDebug)
         
-        self.withSound = QtGui.QCheckBox("Audible beeps")
+        self.withSound = QCheckBox("Audible beeps")
         self.withSound.setChecked(True)
         inputSettingsLayout.addWidget(self.withSound)
 
-        self.iconComboBoxSoundDit = QtGui.QComboBox()
+        self.iconComboBoxSoundDit = QComboBox()
         self.iconComboBoxSoundDit.addItem("MB_OK", winsound.MB_OK)
         self.iconComboBoxSoundDit.addItem("MB_ICONQUESTION", winsound.MB_ICONQUESTION)
         self.iconComboBoxSoundDit.addItem("MB_ICONHAND", winsound.MB_ICONHAND)
@@ -653,7 +661,7 @@ class Window(QtGui.QDialog):
         self.iconComboBoxSoundDit.addItem("MB_ICONASTERISK", winsound.MB_ICONASTERISK)
         self.iconComboBoxSoundDit.addItem("DEFAULT", -1)
 
-        self.iconComboBoxSoundDah = QtGui.QComboBox()
+        self.iconComboBoxSoundDah = QComboBox()
         self.iconComboBoxSoundDah.addItem("MB_OK", winsound.MB_OK)
         self.iconComboBoxSoundDah.addItem("MB_ICONQUESTION", winsound.MB_ICONQUESTION)
         self.iconComboBoxSoundDah.addItem("MB_ICONHAND", winsound.MB_ICONHAND)
@@ -661,16 +669,16 @@ class Window(QtGui.QDialog):
         self.iconComboBoxSoundDah.addItem("MB_ICONASTERISK", winsound.MB_ICONASTERISK)
         self.iconComboBoxSoundDah.addItem("DEFAULT", -1)
 
-        DitSoundLabel = QtGui.QLabel("Dit sound: ")
-        DahSoundLabel = QtGui.QLabel("Dah sound: ")
-        SoundConfigLayout = QtGui.QGridLayout()
+        DitSoundLabel = QLabel("Dit sound: ")
+        DahSoundLabel = QLabel("Dah sound: ")
+        SoundConfigLayout = QGridLayout()
         SoundConfigLayout.addWidget(DitSoundLabel, 0, 0)
         SoundConfigLayout.addWidget(self.iconComboBoxSoundDit, 0, 1, 1, 4)
         SoundConfigLayout.addWidget(DahSoundLabel, 1, 0)
         SoundConfigLayout.addWidget(self.iconComboBoxSoundDah, 1, 1, 1, 4)
         
         #inputSettingsLayout.addLayout(SoundConfigLayout)
-        self.GOButton = QtGui.QPushButton("GO!")
+        self.GOButton = QPushButton("GO!")
         inputSettingsLayout.addWidget(self.GOButton)
         
         self.iconGroupBox.setLayout(inputSettingsLayout)
@@ -683,14 +691,14 @@ class Window(QtGui.QDialog):
             myConfig['off'] = True
 
     def createActions(self):
-        self.minimizeAction = QtGui.QAction("Minimize", self, triggered=self.hide)
-        self.maximizeAction = QtGui.QAction("Maximize", self, triggered=self.showMaximized)
-        self.restoreAction = QtGui.QAction("Restore", self, triggered=self.showNormal)
-        self.onOffAction = QtGui.QAction("OnOff", self, triggered=self.toggleOnOff)
-        self.quitAction = QtGui.QAction("Quit", self, triggered=sys.exit)
+        self.minimizeAction = QAction("Minimize", self, triggered=self.hide)
+        self.maximizeAction = QAction("Maximize", self, triggered=self.showMaximized)
+        self.restoreAction = QAction("Restore", self, triggered=self.showNormal)
+        self.onOffAction = QAction("OnOff", self, triggered=self.toggleOnOff)
+        self.quitAction = QAction("Quit", self, triggered=sys.exit)
 
     def createTrayIcon(self):
-        self.trayIconMenu = QtGui.QMenu(self)
+        self.trayIconMenu = QMenu(self)
         self.trayIconMenu.addAction(self.minimizeAction)
         self.trayIconMenu.addAction(self.maximizeAction)
         self.trayIconMenu.addAction(self.restoreAction)
@@ -698,22 +706,22 @@ class Window(QtGui.QDialog):
         self.trayIconMenu.addAction(self.onOffAction)
         self.trayIconMenu.addSeparator()
         self.trayIconMenu.addAction(self.quitAction)
-        self.trayIcon = QtGui.QSystemTrayIcon(self)
+        self.trayIcon = QSystemTrayIcon(self)
         self.trayIcon.setContextMenu(self.trayIconMenu)
 
 
-class CodeRepresentation(QtGui.QWidget):
+class CodeRepresentation(QWidget):
     def __init__(self, parent, char, code, c1):
         super(CodeRepresentation, self).__init__(None)       
-        vlayout = QtGui.QVBoxLayout()
+        vlayout = QVBoxLayout()
         self.char = char
-        self.character = QtGui.QLabel("<font color='blue' size='3'>"+char+"</font>")
+        self.character = QLabel("<font color='blue' size='3'>"+char+"</font>")
         self.character.setGeometry(10, 10, 10, 10)
         self.character.setContentsMargins(0, 0, 0, 0)
         self.character.setMaximumHeight(15)
-        self.character.setAlignment(QtCore.Qt.AlignTop)        
-        self.codeline = QtGui.QLabel() 
-        self.codeline.setAlignment(QtCore.Qt.AlignTop)
+        self.character.setAlignment(Qt.AlignTop)        
+        self.codeline = QLabel() 
+        self.codeline.setAlignment(Qt.AlignTop)
         self.codeline.setContentsMargins(0, 0, 0, 0)
         self.codeline.setMaximumHeight(200)
         self.codeline.move(20, 30)
@@ -721,8 +729,8 @@ class CodeRepresentation(QtGui.QWidget):
         vlayout.setContentsMargins(0, 0, 0, 0)
         vlayout.addWidget(self.character)
         vlayout.addWidget(self.codeline)
-        vlayout.setAlignment(self.character, QtCore.Qt.AlignCenter)
-        vlayout.setAlignment(self.codeline, QtCore.Qt.AlignCenter)        
+        vlayout.setAlignment(self.character, Qt.AlignCenter)
+        vlayout.setAlignment(self.codeline, Qt.AlignCenter)        
         self.setLayout(vlayout)
         self.setContentsMargins(0, 0, 0, 0)
      #   self.show()
@@ -775,15 +783,18 @@ class CodeRepresentation(QtGui.QWidget):
             self.disable()
         pass
     
-class AllChars(QtGui.QWidget):
+class AllChars(QWidget):
     
-    __pyqtSignals__ = ("h()", "s()")
+    hideSignal = pyqtSignal()
+    showSignal = pyqtSignal()
     
     def __init__(self, maps, actions, perrow):
         super(AllChars, self).__init__()
-        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
-        self.vlayout = QtGui.QVBoxLayout()
-        hlayout = QtGui.QHBoxLayout()
+        self.hideSignal.connect(self.hide)
+        self.showSignal.connect(self.show)
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
+        self.vlayout = QVBoxLayout()
+        hlayout = QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
         self.vlayout.addLayout(hlayout)
         self.crs = {}
@@ -795,7 +806,7 @@ class AllChars(QtGui.QWidget):
             hlayout.addWidget(self.crs[item])
             if (x > perrow):
                 x = 0
-                hlayout = QtGui.QHBoxLayout()
+                hlayout = QHBoxLayout()
                 hlayout.setContentsMargins(0, 0, 0, 0)
                 self.vlayout.addLayout(hlayout)
         self.setLayout(self.vlayout)
@@ -820,13 +831,13 @@ if __name__ == '__main__':
     global normalmapping, actions, allchars, mousemapping, mousechars
     import sys
     createMapping()
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
 
-    if not QtGui.QSystemTrayIcon.isSystemTrayAvailable():
-        QtGui.QMessageBox.critical(None, "MorseWriter", "I couldn't detect any system tray on this system.")
+    if not QSystemTrayIcon.isSystemTrayAvailable():
+        QMessageBox.critical(None, "MorseWriter", "I couldn't detect any system tray on this system.")
         sys.exit(1)
 
-    QtGui.QApplication.setQuitOnLastWindowClosed(False)
+    QApplication.setQuitOnLastWindowClosed(False)
 
     window = Window()
     #code = CodeRepresentation(window, "A", "233232")
@@ -837,11 +848,6 @@ if __name__ == '__main__':
     allchars = AllChars(normalmapping, actions, 15)
     mousechars = AllChars(mousemapping, actions, 2)
     mousechars.hide()
-    allchars.connect(allchars, SIGNAL("h()"), allchars, SLOT("hide()"))
-    allchars.connect(allchars, SIGNAL("s()"), allchars, SLOT("show()"))
-    mousechars.connect(mousechars, SIGNAL("h()"), mousechars, SLOT("hide()"))
-    mousechars.connect(mousechars, SIGNAL("s()"), mousechars, SLOT("show()"))
-
     
     window.show()
     sys.exit(app.exec_())
