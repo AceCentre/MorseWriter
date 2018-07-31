@@ -1,2 +1,7 @@
 build/
 Thumbs.db
+__pycache__/
+dist/
+requirements.txt
+venv/
+
