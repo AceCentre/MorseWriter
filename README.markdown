@@ -41,7 +41,7 @@ pyinstaller MorseCodeGUI.spec
 
 **Usage**
 
-*   [Download the MorseWriter Application and Code Chart from here](https://github.com/downloads/willwade/MorseWriter/MorseWriterv2.zip)
+*   [Download the MorseWriter Application and Code Chart from here](https://github.com/willwade/MorseWriter/releases/download/2.2/MorseCodeGUI.zip)
 *   Run the MorseWriter.exe 
 *   Select your options
 *   Note the two key option: the key on the left hand pull down menu relates to dit (*) and one on the right relates to dah (-)
