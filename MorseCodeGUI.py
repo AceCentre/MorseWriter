@@ -1,8 +1,8 @@
 #!/usr/bin/env pythone
 
 # This is only needed for Python v2 but is harmless for Python v3.
-import sip
-sip.setapi('QVariant', 1)
+#import sip
+#sip.setapi('QVariant', 1)
 import PyHook3, win32con, win32api, time, pythoncom, configparser, sys, threading, winsound, icons_rc, atexit
 from collections import OrderedDict
 from PyQt5.QtCore import pyqtSignal, Qt
@@ -10,19 +10,74 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QVBoxLayout, QDialog, QWidget, QApplication, QSystemTrayIcon, QGroupBox, QRadioButton, \
   QMessageBox, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QLineEdit, QGridLayout, QCheckBox, QPushButton, QAction, \
   QMenu
+from enum import Enum
+import json
+import os
+from presagectypes import Presage, PresageCallback
 
 lastkeydowntime = -1
+
+presageconfig = os.path.join(os.path.dirname(os.path.realpath(__file__)), "res", "presage.xml")
+presagedll = os.path.join(os.path.dirname(os.path.realpath(__file__)), "libpresage-1.dll")
+
 
 ctrlpressed = False
 shiftpressed = False
 disabled = False
 
-mousemode = False
-
 currentX = 0
 currentY = 0
 
 pressingKey = False
+
+layoutmanager = None
+codeslayoutview = None
+typestate = None
+
+class TypeState (PresageCallback):
+    def __init__ (self):
+        self.text = ""
+        self.predictions = None
+        self.presage = Presage(self, config=presageconfig, dllfile=presagedll)
+    def past_stream (self):
+        return self.text
+    def future_stream (self):
+        return self.text
+    def pushchar (self, char):
+        self.text += char
+        self.predictions = None
+    def popchar (self):
+        self.text = self.text[:-1]
+        self.predictions = None
+    def getpredictions (self):
+        if self.predictions == None:
+            self.predictions = self.presage.predict()
+        return self.predictions
+
+class LayoutManager (object):
+    def __init__ (self, fn, actions):
+        self.actions = actions
+        data_str = ""
+        with open(fn, "r") as f:
+            data = json.loads("".join(chunk for chunk in iter(f.read, '')))
+            self.layouts = dict(map(lambda a:(a[0],self._layout_import(a[1])), data['layouts'].items()))
+            self.active = self.layouts.get(data['mainlayout'], None)
+            self.mainlayout = self.active
+            self.mainlayoutname = data['mainlayout']
+            
+    def _layout_import (self, layout):
+        for item in layout['items']:
+            actioninitdata =  self.actions.__members__.get(item.get('action', None), None)
+            action = None
+            if actioninitdata is not None:
+                action = actioninitdata.value[0](item, *actioninitdata.value[1:])
+            item['_action'] = action
+        layout['items'] = OrderedDict(map(lambda a: (a['code'], a), layout['items']))
+        return layout
+        
+    def set_active (self, layout):
+        self.active = layout
+
 
 def PressKey(down, key):
     global pressingKey
@@ -39,151 +94,20 @@ def TypeKey(key, keystroke_time=10):
 def endCharacter():
     if myConfig['debug']:
         print("End Character")
-    global currentCharacter, hm, repeaton, repeatkey,  mousemode, currentX, currentY, allchars, mousechars
+    global currentCharacter, hm, repeaton, repeatkey, currentX, currentY
     morse = "".join(map(str, currentCharacter))
-    if mousemode:
-        action = mousemapping.get(morse, None)
-    else: # normal mode
-        action = normalmapping.get(morse, None)
+    item = layoutmanager.active['items'].get(morse, None)
+    action = None if item is None else item['_action']
     if myConfig['debug']:
         print("action: ", action)
-    if action != None:
-        key = action[0]
-        if (key == actions.NORMALMODE[0]):
-            mousemode = False
-            allchars.showSignal.emit()
-            mousechars.hideSignal.emit()
-        elif (key == actions.MOUSEUP5[0]):
-            currentY += -5
-            moveMouse()
-        elif (key == actions.MOUSEDOWN5[0]):
-            currentY += 5
-            moveMouse()
-        elif (key == actions.MOUSELEFT5[0]):
-            currentX += -5
-            moveMouse()
-        elif (key == actions.MOUSERIGHT5[0]):
-            currentX += 5
-            moveMouse()
-        elif (key == actions.MOUSEUPLEFT5[0]):
-            currentX += -5
-            currentY += -5
-            moveMouse()
-        elif (key == actions.MOUSEUPRIGHT5[0]):
-            currentX += 5
-            currentY += -5
-            moveMouse()
-        elif (key == actions.MOUSEDOWNLEFT5[0]):
-            currentX += -5
-            currentY += 5
-            moveMouse()
-        elif (key == actions.MOUSEDOWNRIGHT5[0]):
-            currentX += 5
-            currentY += 5
-            moveMouse()
-        elif (key == actions.MOUSEUP40[0]):
-            currentY += -40
-            moveMouse()
-        elif (key == actions.MOUSEDOWN40[0]):
-            currentY += 40
-            moveMouse()
-        elif (key == actions.MOUSELEFT40[0]):
-            currentX += -40
-            moveMouse()
-        elif (key == actions.MOUSERIGHT40[0]):
-            currentX += 40
-            moveMouse()
-        elif (key == actions.MOUSEUPLEFT40[0]):
-            currentX += -40
-            currentY += -40
-            moveMouse()
-        elif (key == actions.MOUSEUPRIGHT40[0]):
-            currentX += 40
-            currentY += -40
-            moveMouse()
-        elif (key == actions.MOUSEDOWNLEFT40[0]):
-            currentX += -40
-            currentY += 40
-            moveMouse()
-        elif (key == actions.MOUSEDOWNRIGHT40[0]):
-            currentX += 40
-            currentY += 40
-            moveMouse()
-        elif (key == actions.MOUSEUP250[0]):
-            currentY += -250
-            moveMouse()
-        elif (key == actions.MOUSEDOWN250[0]):
-            currentY += 250
-            moveMouse()
-        elif (key == actions.MOUSELEFT250[0]):
-            currentX += -250
-            moveMouse()
-        elif (key == actions.MOUSERIGHT250[0]):
-            currentX += 250
-            moveMouse()
-        elif (key == actions.MOUSEUPLEFT250[0]):
-            currentX += -250
-            currentY += -250
-            moveMouse()
-        elif (key == actions.MOUSEUPRIGHT250[0]):
-            currentX += 250
-            currentY += -250
-            moveMouse()
-        elif (key == actions.MOUSEDOWNLEFT250[0]):
-            currentX += -250
-            currentY += 250
-            moveMouse()
-        elif (key == actions.MOUSEDOWNRIGHT250[0]):
-            currentX += 250
-            currentY += 250
-            moveMouse()
-        elif (key == actions.MOUSECLICKLEFT[0]):
-            leftClickMouse()
-        elif (key == actions.MOUSECLICKRIGHT[0]):
-            rightClickMouse()
-        elif (key == actions.MOUSECLKHLDLEFT[0]):
-            leftMouseDown()
-        elif (key == actions.MOUSECLKHLDRIGHT[0]):
-            rightMouseDown()
-        elif (key == actions.MOUSERELEASEHOLD[0]):
-            releaseMouseDown()
-        elif (key == actions.REPEATMODE[0]):
-            if (repeaton == True):
-                if myConfig['debug']:
-                    print("repeat OFF")
-                    repeaton = False
-                    repeatkey = None
-                else:
-                    if myConfig['debug']:
-                        print("repeat ON")
-                    repeaton = True
-        elif (key == actions.MOUSEMODE[0]):
-            mousemode = True
-            #mousechars.show()
-            allchars.hideSignal.emit()
-            mousechars.showSignal.emit()
-            currentX, currentY = win32api.GetCursorPos()
-        else: 
-            if (repeaton):
-                if (repeatkey == None):
-                    repeatkey = key
-                else:
-                    if myConfig['debug']:
-                        print("repeat code: ", repeatkey, " + ", key)
-                    PressKey(True, repeatkey)
-                    TypeKey(key)
-                    PressKey(False, repeatkey)
-            else:
-                if myConfig['debug']:
-                    print("code found: ", key)
-                #win32api.VkKeyScan('1')
-                TypeKey(key) 
+    if action is not None:
+        action.perform()
+    # save cursor position for after each action, MOUSEMODE has been removed!!
+    currentX, currentY = win32api.GetCursorPos()
     hm.KeyDown = OnKeyboardEventDown
     hm.KeyUp = OnKeyboardEventUp
     currentCharacter = []
-    allchars.reset()
-    mousechars.reset()
-    return
+    codeslayoutview.reset()
 
 def disableKeyUpDown(event):
     if pressingKey:
@@ -229,18 +153,18 @@ def OnKeyboardEventDown(event):
 #            return False
 #    elif (((event.KeyID != myConfig['keyone']) and (event.KeyID != myConfig['keytwo'])) or (lastkeydowntime != -1)):
 #        return False
-    if (myConfig['onekey']):
-        if ((event.KeyID != myConfig['keyone']) or (lastkeydowntime != -1)):
-            return False
-    elif (myConfig['twokey']):
-        if (((event.KeyID != myConfig['keyone']) and (event.KeyID != myConfig['keytwo'])) or (lastkeydowntime != -1)):
-            return False
-    else:  #threekey
-        if (((event.KeyID != myConfig['keyone']) and (event.KeyID != myConfig['keytwo']) and (event.KeyID != myConfig['keythree'])) or (lastkeydowntime != -1)):
-            return False
+    if lastkeydowntime != -1:
+        return False
+    keys = (myConfig['keyone'],) if myConfig['onekey'] else \
+      (myConfig['keyone'], myConfig['keytwo']) if myConfig['twokey'] else \
+      (myConfig['keyone'], myConfig['keytwo'], myConfig['keythree']) # threekey
+    tmp = tuple(map(lambda a:a[1], filter(lambda a:a[0]==event.KeyID, zip(keys, range(len(keys))))))
+    if len(tmp) == 0:
+        return True
+    keyidx = tmp[0]
     try:
         endCharacterTimer.cancel()
-        if (event.KeyID == myConfig['keythree']):
+        if keyidx == 2: # third key
             endCharacter()
     except NameError:
         pass
@@ -288,8 +212,8 @@ def releaseMouseDown():
     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,currentX,currentY,0,0)
     win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP,currentX,currentY,0,0)
 
-def enum(**enums):
-    return type('Enum', (), enums)
+def enum(name, **enums):
+    return Enum(name, enums)
 
 def OnKeyboardEventUp(event):
     global lastkeydowntime, MyEvents, currentCharacter, endCharacterTimer, hm, myConfig, disabled
@@ -316,14 +240,12 @@ def OnKeyboardEventUp(event):
         #print 'KeyID:', event.KeyID
         #print 'ScanCode:', event.ScanCode
         #print(str(lastkeydowntime))
-
-    if (myConfig['onekey']):
-        if (event.KeyID != myConfig['keyone']):
-            return False
-    else:
-        if ((event.KeyID != myConfig['keyone']) and (event.KeyID != myConfig['keytwo'])):
-            return False
-
+    keys = (myConfig['keyone'],) if myConfig['onekey'] else \
+      (myConfig['keyone'], myConfig['keytwo'])
+    tmp = tuple(map(lambda a:a[1], filter(lambda a:a[0]==event.KeyID, zip(keys, range(len(keys))))))
+    if len(tmp) == 0: # is not the target key
+        return True
+    keyidx = tmp[0]
     msSinceLastKeyDown = event.Time - lastkeydowntime
     lastkeydowntime = -1
     endCharacterTimer = threading.Timer(float(myConfig['minLetterPause'])/1000.0, endCharacter)
@@ -344,11 +266,11 @@ def OnKeyboardEventUp(event):
         if myConfig['debug']:
             print("Duration of keypress: " + str(msSinceLastKeyDown))
     else:
-        if (event.KeyID == myConfig['keyone']):
+        if keyidx == 0:
             addDit()
             if (myConfig['withsound']):
                 winsound.MessageBeep(myConfig['SoundDit'])
-        else:
+        elif keyidx == 1:
             addDah()
             if (myConfig['withsound']):
                 winsound.MessageBeep(myConfig['SoundDah'])
@@ -359,26 +281,22 @@ def OnKeyboardEventUp(event):
     return False
 
 def addDit():
-    global allchars, mousechars
-    currentCharacter.append(MyEvents.DIT)
+    currentCharacter.append(MyEvents.DIT.value)
     if (myConfig['withsound']):
         #winsound.Beep(int(myConfig['SoundDitFrequency']), int(myConfig['SoundDitDuration']))
         #winsound.MessageBeep(myConfig['SoundDit'].toInt()[0])
         winsound.Beep(440, 33)
     #combos = getPossibleCombos(currentCharacter)
-    allchars.Dit()
-    mousechars.Dit()
+    codeslayoutview.Dit()
 
 def addDah():
-    global allchars, mousechars
-    currentCharacter.append(MyEvents.DAH)
+    currentCharacter.append(MyEvents.DAH.value)
     if (myConfig['withsound']):
         #winsound.Beep(int(myConfig['SoundDitFrequency']), int(myConfig['SoundDitDuration']))
         #winsound.MessageBeep(myConfig['SoundDah'].toInt()[0])
         winsound.Beep(440, 100)
     #combos = getPossibleCombos(currentCharacter)
-    allchars.Dah()
-    mousechars.Dah()
+    codeslayoutview.Dah()
 
 def getPossibleCombos(currentCharacter):
     x = ""
@@ -399,50 +317,262 @@ def parseConfigFile():
     maxDitTime = config.getint('Input', 'maxDitTime')
     minLetterPause = config.getint('Input', 'minLetterPause')
     debug = config.getboolean('Various', 'debug')
+
+class Action (object):
+    def __init__ (self, item):
+        self.item = item
+    def getlabel (self):
+        return self.item['label'] if 'label' in self.item else ""
+    def perform (self):
+        pass
+
+class ActionLegacy (Action):
+    def __init__ (self, item, key, label):
+        super(ActionLegacy, self).__init__(item)
+        self.key = key
+        self.label = label
+    def perform (self):
+        global repeaton, repeatkey
+        key = self.key
+        if (key == actions.MOUSEUP5.value[1]):
+            currentY += -5
+            moveMouse()
+        elif (key == actions.MOUSEDOWN5.value[1]):
+            currentY += 5
+            moveMouse()
+        elif (key == actions.MOUSELEFT5.value[1]):
+            currentX += -5
+            moveMouse()
+        elif (key == actions.MOUSERIGHT5.value[1]):
+            currentX += 5
+            moveMouse()
+        elif (key == actions.MOUSEUPLEFT5.value[1]):
+            currentX += -5
+            currentY += -5
+            moveMouse()
+        elif (key == actions.MOUSEUPRIGHT5.value[1]):
+            currentX += 5
+            currentY += -5
+            moveMouse()
+        elif (key == actions.MOUSEDOWNLEFT5.value[1]):
+            currentX += -5
+            currentY += 5
+            moveMouse()
+        elif (key == actions.MOUSEDOWNRIGHT5.value[1]):
+            currentX += 5
+            currentY += 5
+            moveMouse()
+        elif (key == actions.MOUSEUP40.value[1]):
+            currentY += -40
+            moveMouse()
+        elif (key == actions.MOUSEDOWN40.value[1]):
+            currentY += 40
+            moveMouse()
+        elif (key == actions.MOUSELEFT40.value[1]):
+            currentX += -40
+            moveMouse()
+        elif (key == actions.MOUSERIGHT40.value[1]):
+            currentX += 40
+            moveMouse()
+        elif (key == actions.MOUSEUPLEFT40.value[1]):
+            currentX += -40
+            currentY += -40
+            moveMouse()
+        elif (key == actions.MOUSEUPRIGHT40.value[1]):
+            currentX += 40
+            currentY += -40
+            moveMouse()
+        elif (key == actions.MOUSEDOWNLEFT40.value[1]):
+            currentX += -40
+            currentY += 40
+            moveMouse()
+        elif (key == actions.MOUSEDOWNRIGHT40.value[1]):
+            currentX += 40
+            currentY += 40
+            moveMouse()
+        elif (key == actions.MOUSEUP250.value[1]):
+            currentY += -250
+            moveMouse()
+        elif (key == actions.MOUSEDOWN250.value[1]):
+            currentY += 250
+            moveMouse()
+        elif (key == actions.MOUSELEFT250.value[1]):
+            currentX += -250
+            moveMouse()
+        elif (key == actions.MOUSERIGHT250.value[1]):
+            currentX += 250
+            moveMouse()
+        elif (key == actions.MOUSEUPLEFT250.value[1]):
+            currentX += -250
+            currentY += -250
+            moveMouse()
+        elif (key == actions.MOUSEUPRIGHT250.value[1]):
+            currentX += 250
+            currentY += -250
+            moveMouse()
+        elif (key == actions.MOUSEDOWNLEFT250.value[1]):
+            currentX += -250
+            currentY += 250
+            moveMouse()
+        elif (key == actions.MOUSEDOWNRIGHT250.value[1]):
+            currentX += 250
+            currentY += 250
+            moveMouse()
+        elif (key == actions.MOUSECLICKLEFT.value[1]):
+            leftClickMouse()
+        elif (key == actions.MOUSECLICKRIGHT.value[1]):
+            rightClickMouse()
+        elif (key == actions.MOUSECLKHLDLEFT.value[1]):
+            leftMouseDown()
+        elif (key == actions.MOUSECLKHLDRIGHT.value[1]):
+            rightMouseDown()
+        elif (key == actions.MOUSERELEASEHOLD.value[1]):
+            releaseMouseDown()
+        elif (key == actions.REPEATMODE.value[1]):
+            if (repeaton == True):
+                if myConfig['debug']:
+                    print("repeat OFF")
+                    repeaton = False
+                    repeatkey = None
+                else:
+                    if myConfig['debug']:
+                        print("repeat ON")
+                    repeaton = True 
+
+
+class KeyStroke (object):
+    def __init__ (self, name, label, keywin32, character):
+        self.name = name
+        self.label = label
+        self.keywin32 = keywin32
+        self.character = character
+        
+class ActionKeyStroke (Action):
+    def __init__ (self, item, key):
+        super(ActionKeyStroke, self).__init__(item)
+        self.key = key
+    def getlabel (self):
+        return self.key.label
+    def perform (self):
+        key = self.key.keywin32
+        if (repeaton):
+            if (repeatkey == None):
+                repeatkey = key
+            else:
+                if myConfig['debug']:
+                    print("repeat code: ", repeatkey, " + ", key)
+                PressKey(True, repeatkey)
+                TypeKey(key)
+                PressKey(False, repeatkey)
+        else:
+            if myConfig['debug']:
+                print("code found: ", key)
+            #win32api.VkKeyScan('1')
+            TypeKey(key)
+            if typestate != None:
+                if self.key.name == "BACKSPACE":
+                    typestate.popchar()
+                elif self.key.character != None:
+                    typestate.pushchar(self.key.character)
+class ChangeLayoutAction (Action):
+    def perform (self):
+        global typestate
+        if 'target' not in self.item or self.item['target'] not in layoutmanager.layouts:
+            raise AssertionError("target({}) not found".format(self.item.get('target', "")))
+        # special case for `typing` target
+        if self.item['target'] == 'typing':
+            typestate = TypeState()
+        else:
+            typestate = None
+        layoutmanager.set_active(layoutmanager.layouts[self.item['target']])
+        codeslayoutview.changeLayoutSignal.emit()
+
+class PredictionSelectLayoutAction (Action):
+    def getlabel (self):
+        if typestate != None:
+            target = self.item['target']
+            predictions = typestate.getpredictions()
+            if target >= 0 and target < len(predictions):
+                return predictions[target]
+        return ""
+    def perform (self):
+        if typestate != None:
+            target = self.item['target']
+            predictions = typestate.getpredictions()
+            if target >= 0 and target < len(predictions):
+                pred = predictions[target]
+                plen = len(pred)
+                print("PRED", predictions)
+                if plen > 0:
+                    stripsuffix = ""
+                    for i in range(plen):
+                        idx = len(typestate.text) - i
+                        if idx == 0 or (idx > 0 and typestate.text[idx - 1] in [" ", "\n", "\t", "\r"]):
+                            stripsuffix = typestate.text[idx:]
+                            break
+                    newchars = pred[len(stripsuffix):] + " "
+                    typestate.text = typestate.text[:len(typestate.text)-len(stripsuffix)] + newchars
+                    for char in newchars:
+                        keys = tuple(filter(lambda a: a.character == char, keystrokes))
+                        if len(keys) == 0:
+                            break
+                        if ord(keys[0].character) == 8 and len(typestate.text) == 0: # special case
+                            continue
+                        TypeKey(keys[0].keywin32)
     
-def createMapping():
-    global normalmapping, numbermapping, mousemapping, actions
-    actions = enum(A=(win32api.VkKeyScan('a'), 'a'), B=(win32api.VkKeyScan('b'), 'b'), C=(win32api.VkKeyScan('c'), 'c'), D=(win32api.VkKeyScan('d'), 'd'), 
-                   E=(win32api.VkKeyScan('e'), 'e'), F=(win32api.VkKeyScan('f'), 'f'), G=(win32api.VkKeyScan('g'), 'g'), H=(win32api.VkKeyScan('h'), 'h'), 
-                   I=(win32api.VkKeyScan('i'), 'i'), J=(win32api.VkKeyScan('j'), 'j'), K=(win32api.VkKeyScan('k'), 'k'), L=(win32api.VkKeyScan('l'), 'l'), 
-                   M=(win32api.VkKeyScan('m'), 'm'), N=(win32api.VkKeyScan('n'), 'n'), O=(win32api.VkKeyScan('o'), 'o'), P=(win32api.VkKeyScan('p'), 'p'), 
-                   Q=(win32api.VkKeyScan('q'), 'q'), R=(win32api.VkKeyScan('r'), 'r'), S=(win32api.VkKeyScan('s'), 's'), T=(win32api.VkKeyScan('t'), 't'),
-                   U=(win32api.VkKeyScan('u'), 'u'), V=(win32api.VkKeyScan('v'), 'v'), W=(win32api.VkKeyScan('w'), 'w'), X=(win32api.VkKeyScan('x'), 'x'), 
-                   Y=(win32api.VkKeyScan('y'), 'y'), Z=(win32api.VkKeyScan('z'), 'z'), ONE=(win32api.VkKeyScan('1'), '1'), TWO=(win32api.VkKeyScan('2'), '2'), 
-                   THREE=(win32api.VkKeyScan('3'), '3'), FOUR=(win32api.VkKeyScan('4'), '4'), FIVE=(win32api.VkKeyScan('5'), '5'), 
-                   SIX=(win32api.VkKeyScan('6'), '6'), 
-                   SEVEN=(win32api.VkKeyScan('7'), '7'), EIGHT=(win32api.VkKeyScan('8'), '8'), NINE=(win32api.VkKeyScan('9'), '9'), 
-                   ZERO=(win32api.VkKeyScan('0'), '0'), DOT=(win32api.VkKeyScan('.'), '.'), COMMA=(win32api.VkKeyScan(','), ','), 
-                   QUESTION=(win32api.VkKeyScan('?'), '?'), EXCLAMATION=(win32api.VkKeyScan('!'), '!'), COLON=(win32api.VkKeyScan(':'), ':'), 
-                   SEMICOLON=(win32api.VkKeyScan(';'), ';'), AT=(win32api.VkKeyScan('@'), '@'), BASH=(win32api.VkKeyScan('#'), '#'),
-                   DOLLAR=(win32api.VkKeyScan('$'), '$'), PERCENT=(win32api.VkKeyScan('%'), '%'), AMPERSAND=(win32api.VkKeyScan('&'), '&'), 
-                   STAR=(win32con.VK_MULTIPLY, '*'), PLUS=(win32con.VK_ADD, '+'), MINUS=(win32con.VK_SUBTRACT, '-'), 
-                   EQUALS=(win32api.VkKeyScan('='), '='), FSLASH=(win32api.VkKeyScan('/'), '/'), BSLASH=(win32api.VkKeyScan('\\'), '\\'), 
-                   SINGLEQUOTE=(win32api.VkKeyScan('\''), '\''), DOUBLEQUOTE=(win32api.VkKeyScan('"'), '"'), OPENBRACKET=(win32api.VkKeyScan('('), '('), 
-                   CLOSEBRACKET=(win32api.VkKeyScan(')'), ')'), LESSTHAN=(win32api.VkKeyScan('<'), '<'), MORETHAN=(win32api.VkKeyScan('>'), '>'), 
-                   CIRCONFLEX=(win32api.VkKeyScan('^'), '^'), ENTER=(win32con.VK_RETURN, 'ENTER'), SPACE=(win32con.VK_SPACE, 'space'),
-                   BACKSPACE=(win32con.VK_BACK, 'bckspc'), TAB=(win32con.VK_TAB, 'tab'), TABLEFT=(win32con.VK_TAB, 'tab'), 
-                   UNDERSCORE=(win32api.VkKeyScan('_'), '_'), PAGEUP=(win32con.VK_PRIOR, 'pageup'), PAGEDOWN=(win32con.VK_NEXT, 'pagedwn'), 
-                   LEFTARROW=(win32con.VK_LEFT, 'left'), RIGHTARROW=(win32con.VK_RIGHT, 'right'),
-                   UPARROW=(win32con.VK_UP, 'up'), DOWNARROW=(win32con.VK_DOWN, 'down'), ESCAPE=(win32con.VK_ESCAPE, 'esc'), HOME=(win32con.VK_HOME, 'home'), 
-                   END=(win32con.VK_END, 'end'), INSERT=(win32con.VK_INSERT, 'insert'), DELETE=(win32con.VK_DELETE, 'del'), 
-                   STARTMENU=(win32con.VK_MENU, 'start'), SHIFT=(win32con.VK_SHIFT, 'shift'), ALT=(win32con.VK_MENU, 'alt'),
-                   CTRL=(win32con.VK_CONTROL, 'ctrl'), WINDOWS=(win32con.VK_LWIN, 'win'), APPKEY=(win32con.VK_LWIN, 'app'), 
-                   CAPSLOCK=(win32con.VK_CAPITAL, 'caps'), MOUSEMODE=(285, 'mousemode'), NUMBERMODE=(286, 'nbrmode'), 
-                   REPEATMODE=(400, 'repeat'), SOUND=(288, 'snd'), CODESET=(289, 'code'),
-                   F1=(win32con.VK_F1, 'F1'), F2=(win32con.VK_F2, 'F2'), F3=(win32con.VK_F3, 'F3'), F4=(win32con.VK_F4, 'F4'), F5=(win32con.VK_F5, 'F5'), 
-                   F6=(win32con.VK_F6, 'F6'), F7=(win32con.VK_F7, 'F7'), F8=(win32con.VK_F8, 'F8'), F9=(win32con.VK_F9, 'F9'), F10=(win32con.VK_F10, 'F10'), 
-                   F11=(win32con.VK_F11, 'F11'), F12=(win32con.VK_F12, 'F12'), MOUSERIGHT5=(302, 'ms right 5'),
-                   MOUSEUP5=(303, 'ms up 5'), MOUSECLICKLEFT=(304, 'ms clkleft'), MOUSEDBLCLICKLEFT=(305, 'ms dblclkleft'), 
-                   MOUSECLKHLDLEFT=(306, 'ms hldleft'), MOUSEUPLEFT5=(307, 'ms leftup 5'), MOUSEDOWNLEFT5=(308, 'ms leftdown 5'),
-                   MOUSERELEASEHOLD=(309, 'ms release'), MOUSELEFT5=(310, 'ms left 5'), MOUSEDOWN5=(311, 'ms down 5'), MOUSECLICKRIGHT=(312, 'ms clkright'), 
-                   MOUSEDBLCLICKRIGHT=(313, 'ms dblclkright'), MOUSECLKHLDRIGHT=(314, 'ms hldright'), MOUSEUPRIGHT5=(315, 'ms rightup 5'), 
-                   MOUSEDOWNRIGHT5=(316, 'ms rightdown 5'), NORMALMODE=(317, 'normal mode'), MOUSEUP40=(318, 'ms up 40'), MOUSEUP250=(319, 'ms up 250'), 
-                   MOUSEDOWN40=(320, 'ms down 40'), MOUSEDOWN250=(321, 'ms down 250'), MOUSELEFT40=(322, 'ms left 40'), MOUSELEFT250=(323, 'ms left 250'), 
-                   MOUSERIGHT40=(324, 'ms right 40'), MOUSERIGHT250=(325, 'ms right 250'), MOUSEUPLEFT40=(326, 'ms leftup 40'), 
-                   MOUSEUPLEFT250=(327, 'ms leftup 250'), MOUSEDOWNLEFT40=(328, 'ms leftdown 40'), MOUSEDOWNLEFT250=(329, 'ms leftdown 250'), 
-                   MOUSEUPRIGHT40=(330, 'ms rightup 40'), MOUSEUPRIGHT250=(331, 'ms rightup 250'), MOUSEDOWNRIGHT40=(332, 'ms rightdown 40'),
-                   MOUSEDOWNRIGHT250=(333, 'ms rightdown 250'))
+def initActions():
+    global actions, keystrokes
+    keystrokes = list(map(lambda a: KeyStroke(*a), (
+        ("A", "a", win32api.VkKeyScan("a"), "a"), ("B", "b", win32api.VkKeyScan("b"), "b"), ("C", "c", win32api.VkKeyScan("c"), "c"), ("D", "d", win32api.VkKeyScan("d"), "d"), 
+        ("E", "e", win32api.VkKeyScan("e"), "e"), ("F", "f", win32api.VkKeyScan("f"), "f"), ("G", "g", win32api.VkKeyScan("g"), "g"), ("H", "h", win32api.VkKeyScan("h"), "h"), 
+        ("I", "i", win32api.VkKeyScan("i"), "i"), ("J", "j", win32api.VkKeyScan("j"), "j"), ("K", "k", win32api.VkKeyScan("k"), "k"), ("L", "l", win32api.VkKeyScan("l"), "l"), 
+        ("M", "m", win32api.VkKeyScan("m"), "m"), ("N", "n", win32api.VkKeyScan("n"), "n"), ("O", "o", win32api.VkKeyScan("o"), "o"), ("P", "p", win32api.VkKeyScan("p"), "p"), 
+        ("Q", "q", win32api.VkKeyScan("q"), "q"), ("R", "r", win32api.VkKeyScan("r"), "r"), ("S", "s", win32api.VkKeyScan("s"), "s"), ("T", "t", win32api.VkKeyScan("t"), "t"),
+        ("U", "u", win32api.VkKeyScan("u"), "u"), ("V", "v", win32api.VkKeyScan("v"), "v"), ("W", "w", win32api.VkKeyScan("w"), "w"), ("X", "x", win32api.VkKeyScan("x"), "x"), 
+        ("Y", "y", win32api.VkKeyScan("y"), "y"), ("Z", "z", win32api.VkKeyScan("z"), "z"), ("ONE", "1", win32api.VkKeyScan("1"), "1"), ("TWO", "2", win32api.VkKeyScan("2"), "2"), 
+        ("THREE", "3", win32api.VkKeyScan("3"), "3"), ("FOUR", "4", win32api.VkKeyScan("4"), "4"), ("FIVE", "5", win32api.VkKeyScan("5"), "5"), 
+        ("SIX", "6", win32api.VkKeyScan("6"), "6"), 
+        ("SEVEN", "7", win32api.VkKeyScan("7"), "7"), ("EIGHT", "8", win32api.VkKeyScan("8"), "8"), ("NINE", "9", win32api.VkKeyScan("9"), "9"), 
+        ("ZERO", "0", win32api.VkKeyScan("0"), "0"), ("DOT", ".", win32api.VkKeyScan("."), "."), ("COMMA", ",", win32api.VkKeyScan(","), ","), 
+        ("QUESTION", "?", win32api.VkKeyScan("?"), "?"), ("EXCLAMATION", "!", win32api.VkKeyScan("!"), "!"), ("COLON", ":", win32api.VkKeyScan(":"), ":"), 
+        ("SEMICOLON", ";", win32api.VkKeyScan(";"), ";"), ("AT", "@", win32api.VkKeyScan("@"), "@"), ("BASH", "#", win32api.VkKeyScan("#"), "#"),
+        ("DOLLAR", "$", win32api.VkKeyScan("$"), "$"), ("PERCENT", "%", win32api.VkKeyScan("%"), "%"), ("AMPERSAND", "&", win32api.VkKeyScan("&"), "&"), 
+        ("STAR", "*", win32con.VK_MULTIPLY, "*"), ("PLUS", "+", win32con.VK_ADD, "+"), ("MINUS", "-", win32con.VK_SUBTRACT, "-"), 
+        ("EQUALS", "=", win32api.VkKeyScan("="), "="), ("FSLASH", "/", win32api.VkKeyScan("/"), "/"), ("BSLASH", "\\", win32api.VkKeyScan("\\"), "\\"), 
+        ("SINGLEQUOTE", "\'", win32api.VkKeyScan("\'"), "\'"), ("DOUBLEQUOTE", "\"", win32api.VkKeyScan("\""), "\""), ("OPENBRACKET", "(", win32api.VkKeyScan("("), "("), 
+        ("CLOSEBRACKET", ")", win32api.VkKeyScan(")"), ")"), ("LESSTHAN", "<", win32api.VkKeyScan("<"), "<"), ("MORETHAN", ">", win32api.VkKeyScan(">"), ">"), 
+        ("CIRCONFLEX", "^", win32api.VkKeyScan("^"), "^"), ("ENTER", "ENTER", win32con.VK_RETURN, "\n"), ("SPACE", "space", win32con.VK_SPACE, " "),
+        ("BACKSPACE", "bckspc", win32con.VK_BACK, chr(8)), ("TAB", "tab", win32con.VK_TAB, "\t"), ("TABLEFT", "tab", win32con.VK_TAB, "\t"), 
+        ("UNDERSCORE", "_", win32api.VkKeyScan("_"), "_"), ("PAGEUP", "pageup", win32con.VK_PRIOR, None), ("PAGEDOWN", "pagedwn", win32con.VK_NEXT, None), 
+        ("LEFTARROW", "left", win32con.VK_LEFT, None), ("RIGHTARROW", "right", win32con.VK_RIGHT, "right"),
+        ("UPARROW", "up", win32con.VK_UP, "up"), ("DOWNARROW", "down", win32con.VK_DOWN, "down"), ("ESCAPE", "esc", win32con.VK_ESCAPE, "esc"), ("HOME", "home", win32con.VK_HOME, "home"), 
+        ("END", "end", win32con.VK_END, None), ("INSERT", "insert", win32con.VK_INSERT, None), ("DELETE", "del", win32con.VK_DELETE, None), 
+        ("STARTMENU", "start", win32con.VK_MENU, None), ("SHIFT", "shift", win32con.VK_SHIFT, None), ("ALT", "alt", win32con.VK_MENU, None),
+        ("CTRL", "ctrl", win32con.VK_CONTROL, None), ("WINDOWS", "win", win32con.VK_LWIN, None), ("APPKEY", "app", win32con.VK_LWIN, None), 
+        ("CAPSLOCK", "caps", win32con.VK_CAPITAL, None),
+        ("F1", "F1", win32con.VK_F1, None), ("F2", "F2", win32con.VK_F2, None), ("F3", "F3", win32con.VK_F3, None), ("F4", "F4", win32con.VK_F4, None), ("F5", "F5", win32con.VK_F5, None), 
+        ("F6", "F6", win32con.VK_F6, None), ("F7", "F7", win32con.VK_F7, None), ("F8", "F8", win32con.VK_F8, None), ("F9", "F9", win32con.VK_F9, None), ("F10", "F10", win32con.VK_F10, None),
+        ("F11", "F11", win32con.VK_F11, None), ("F12", "F12", win32con.VK_F12, None))))
+    actionskwargs = dict(map(lambda a: (a[0], (ActionLegacy, a[1], a[2])),
+       (("REPEATMODE", 0, "repeat"), ("SOUND", 8, "snd"), ("CODESET", 9, "code"),
+        ("MOUSERIGHT5", 2, "ms right 5"),
+        ("MOUSEUP5", 3, "ms up 5"), ("MOUSECLICKLEFT", 4, "ms clkleft"), ("MOUSEDBLCLICKLEFT", 5, "ms dblclkleft"), 
+        ("MOUSECLKHLDLEFT", 6, "ms hldleft"), ("MOUSEUPLEFT5", 7, "ms leftup 5"), ("MOUSEDOWNLEFT5", 8, "ms leftdown 5"),
+        ("MOUSERELEASEHOLD", 9, "ms release"), ("MOUSELEFT5", 0, "ms left 5"), ("MOUSEDOWN5", 1, "ms down 5"), ("MOUSECLICKRIGHT", 2, "ms clkright"), 
+        ("MOUSEDBLCLICKRIGHT", 3, "ms dblclkright"), ("MOUSECLKHLDRIGHT", 4, "ms hldright"), ("MOUSEUPRIGHT5", 5, "ms rightup 5"), 
+        ("MOUSEDOWNRIGHT5", 6, "ms rightdown 5"), ("NORMALMODE", 7, "normal mode"), ("MOUSEUP40", 8, "ms up 40"), ("MOUSEUP250", 9, "ms up 250"), 
+        ("MOUSEDOWN40", 0, "ms down 40"), ("MOUSEDOWN250", 1, "ms down 250"), ("MOUSELEFT40", 2, "ms left 40"), ("MOUSELEFT250", 3, "ms left 250"), 
+        ("MOUSERIGHT40", 4, "ms right 40"), ("MOUSERIGHT250", 5, "ms right 250"), ("MOUSEUPLEFT40", 6, "ms leftup 40"), 
+        ("MOUSEUPLEFT250", 7, "ms leftup 250"), ("MOUSEDOWNLEFT40", 8, "ms leftdown 40"), ("MOUSEDOWNLEFT250", 9, "ms leftdown 250"), 
+        ("MOUSEUPRIGHT40", 0, "ms rightup 40"), ("MOUSEUPRIGHT250", 1, "ms rightup 250"), ("MOUSEDOWNRIGHT40", 2, "ms rightdown 40"),
+        ("MOUSEDOWNRIGHT250", 3, "ms rightdown 250"))
+    ))
+    actionskwargs.update(dict(
+        CHANGELAYOUT=(ChangeLayoutAction,), PREDICTION_SELECT=(PredictionSelectLayoutAction,)
+    ))
+    actionskwargs.update(dict(map(lambda a: (a.name, (ActionKeyStroke, a)), keystrokes)))
+    actions = enum('Actions', **actionskwargs)
+    '''
     normalmapping = OrderedDict([('12',actions.A), ('2111',actions.B), ('2121',actions.C), ('211',actions.D), ('1',actions.E), ('1121',actions.F), 
                                  ('221',actions.G), ('1111',actions.H), ('11',actions.I), ('1222',actions.J), ('212',actions.K), ('1211',actions.L), 
                                  ('22',actions.M), ('21',actions.N), ('222',actions.O), ('1221',actions.P), ('2212',actions.Q), ('121',actions.R), 
@@ -479,15 +609,37 @@ def createMapping():
                                 ('2222',actions.MOUSEDBLCLICKRIGHT), ('11111',actions.MOUSECLKHLDRIGHT), ('22121',actions.NORMALMODE)])
     numbermapping = OrderedDict([('1',actions.ONE), ('2',actions.TWO), ('12',actions.THREE), ('11',actions.FOUR), ('21',actions.FIVE), ('22',actions.SIX), 
                                  ('122',actions.SEVEN), ('112',actions.EIGHT), ('111',actions.NINE), ('211',actions.ZERO), ('221',actions.PLUS), 
-                                 ('222',actions.MINUS), ('212',actions.FSLASH), ('121',actions.STAR), ('1212',actions.ENTER), ('121212',actions.DOT)]) 
+                                 ('222',actions.MINUS), ('212',actions.FSLASH), ('121',actions.STAR), ('1212',actions.ENTER), ('121212',actions.DOT)])
     
+    aitems = list(actions)
+    def aname (map, key):
+        return map[key].name
+    maps = {}
+    maps["main"] = {
+        "items": list("{{ \"code\": \"{}\", \"action\": \"{}\" }}".format(key, aname(normalmapping, key)) for key in normalmapping)
+    }
+    maps["mouse"] = {
+        "items": list("{{ \"code\": \"{}\", \"action\": \"{}\" }}".format(key, aname(mousemapping, key)) for key in mousemapping)
+    }
+    maps["number"] = {
+        "items": list("{{ \"code\": \"{}\", \"action\": \"{}\" }}".format(key, aname(numbermapping, key)) for key in numbermapping)
+    }
+    with open("codemaps.json", "w") as f:
+        f.write(json.dumps({ "maps": maps, "mainmap": "main" }, indent=2))
+    '''
+
 def Init():
-    global MyEvents, currentCharacter, hm, repeaton, repeatkey
-#    createMapping()
-    MyEvents = enum(DIT=1, DAH=2)
+    global MyEvents, currentCharacter, hm, repeaton, repeatkey, codeslayoutview, typestate
+    MyEvents = enum('DITDAH', DIT=1, DAH=2)
     currentCharacter = []
     repeaton = False 
     repeatkey = None
+    layoutmanager.set_active(layoutmanager.mainlayout)    # special case for `typing` target
+    if layoutmanager.mainlayoutname == 'typing':
+        typestate = TypeState()
+    else:
+        typestate = None
+    codeslayoutview = CodesLayoutViewWidget(layoutmanager.active)
 
 def Go():
     global hm
@@ -711,11 +863,11 @@ class Window(QDialog):
 
 
 class CodeRepresentation(QWidget):
-    def __init__(self, parent, char, code, c1):
+    def __init__(self, parent, code, item, c1):
         super(CodeRepresentation, self).__init__(None)       
         vlayout = QVBoxLayout()
-        self.char = char
-        self.character = QLabel("<font color='blue' size='3'>"+char+"</font>")
+        self.item = item
+        self.character = QLabel()
         self.character.setGeometry(10, 10, 10, 10)
         self.character.setContentsMargins(0, 0, 0, 0)
         self.character.setAlignment(Qt.AlignTop)        
@@ -733,24 +885,34 @@ class CodeRepresentation(QWidget):
         self.setContentsMargins(0, 0, 0, 0)
      #   self.show()
         self.disabledchars = 0
-        self.codeline.setText("<font color='red' size='5'>"+self.code+"</font>")
+        self.is_enabled = True
+        self.updateView()
         
+    def item_label (self):
+        return self.item['_action'].getlabel() if self.item['_action'] is not None else ""
+    
     def codetocode(self, code):
         toReturn = code.replace('1', '.')
         toReturn = toReturn.replace('2', '-')
         return toReturn;
     
     def enable(self):
-        self.character.setDisabled(False)
-        self.codeline.setDisabled(False)
-        self.character.setText("<font color='blue' size='3'>" + self.char + "</font>")
-        self.codeline.setText("<font color='red' size='5'>" + self.code + "</font>")        
+        self.is_enabled = True
+        self.updateView()
         
-    def disable(self):    
-        self.character.setDisabled(True)
-        self.codeline.setDisabled(True)
-        self.character.setText('<font color="lightgrey", size="3">' + self.char + "</font>")
-        self.codeline.setText("<font color='lightgrey' size='5'>" + self.code + "</font>")        
+    def disable(self):
+        self.is_enabled = False
+        self.updateView()
+        
+    def updateView (self):
+        enabled = self.is_enabled
+        codeselectrange = self.disabledchars if enabled  and self.disabledchars > 0 else 0
+        self.character.setDisabled(not enabled)
+        self.codeline.setDisabled(not enabled)
+        self.character.setText("<font color='{}' size='3'>{}</font>".format('blue' if enabled else 'lightgrey', self.item_label()))
+        self.codeline.setText("<font color='green' size='5'>{}</font><font color='{}' size='5'>{}</font>"
+                              .format(self.code[:codeselectrange], 'red' if enabled else 'lightgrey', self.code[codeselectrange:]))
+        
         
     def enabled(self):
         return self.character.isEnabled()
@@ -776,18 +938,27 @@ class CodeRepresentation(QWidget):
     
     def tickDitDah(self):
         self.disabledchars += 1
-        self.codeline.setText("<font color='green' size='5'>" + self.code[:self.disabledchars] + "</font><font color='red' size='5'>" + self.code[self.disabledchars:] + "</font>")
         if (self.disabledchars > len(self.code)):
-            self.disable()
-        pass
+            self.is_enabled = False
+        self.updateView()
+
+class CodesLayoutViewWidget(QWidget):
     
-class AllChars(QWidget):
-    
+    changeLayoutSignal = pyqtSignal()
     hideSignal = pyqtSignal()
     showSignal = pyqtSignal()
     
-    def __init__(self, maps, actions, perrow):
-        super(AllChars, self).__init__()
+    def changeLayout (self):
+        global codeslayoutview
+        self.hide()
+        if layoutmanager.active is not None:
+            codeslayoutview = CodesLayoutViewWidget(layoutmanager.active)
+        else:
+            codeslayoutview = None
+    
+    def __init__(self, layout):
+        super(CodesLayoutViewWidget, self).__init__()
+        self.changeLayoutSignal.connect(self.changeLayout)
         self.hideSignal.connect(self.hide)
         self.showSignal.connect(self.show)
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
@@ -797,11 +968,14 @@ class AllChars(QWidget):
         self.vlayout.addLayout(hlayout)
         self.crs = {}
         x = 0
-        for item in maps:
+        perrow = layout['column_len']
+        for code in layout['items']:
             x += 1
-            self.crs[item] = CodeRepresentation(None, str(maps[item][1]), str(item), "Green")
-            #self.setStyleSheet("background: %s " % "green")
-            hlayout.addWidget(self.crs[item])
+            item = layout['items'][code]
+            if item.get('emptyspace', False) == False:
+                self.crs[code] = CodeRepresentation(None, code, layout['items'][code], "Green")
+                #self.setStyleSheet("background: %s " % "green")
+                hlayout.addWidget(self.crs[code])
             if (x > perrow):
                 x = 0
                 hlayout = QHBoxLayout()
@@ -811,7 +985,7 @@ class AllChars(QWidget):
         self.vlayout.setContentsMargins(0, 0, 0, 0)
         self.show()
         self.move(0, 0)
-        
+    
     def Dit(self):
         for item in self.crs.values():
             item.Dit()
@@ -823,12 +997,14 @@ class AllChars(QWidget):
     def reset(self):
         for item in self.crs.values():
             item.reset()
-
-
+    
 if __name__ == '__main__':
-    global normalmapping, actions, allchars, mousemapping, mousechars
+    global layoutmanage
     import sys
-    createMapping()
+    initActions()
+    layoutmanager = LayoutManager(os.path.join(os.path.dirname(os.path.realpath(__file__)), "layouts.json"), actions)
+    if layoutmanager.active is None:
+        raise AssertionError("layouts.json has no mainlayout")
     app = QApplication(sys.argv)
 
     if not QSystemTrayIcon.isSystemTrayAvailable():
@@ -842,10 +1018,5 @@ if __name__ == '__main__':
     #code.disable()
     #code.tickDitDah()
     #code.tickDitDah()
-    
-    allchars = AllChars(normalmapping, actions, 15)
-    mousechars = AllChars(mousemapping, actions, 2)
-    mousechars.hide()
-    
     window.show()
     sys.exit(app.exec_())
