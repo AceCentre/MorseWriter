@@ -3,7 +3,7 @@
 # This is only needed for Python v2 but is harmless for Python v3.
 #import sip
 #sip.setapi('QVariant', 1)
-import PyHook3, win32con, win32api, time, pythoncom, configparser, sys, threading, winsound, icons_rc, atexit
+import PyHook3, win32con, win32api, time, pythoncom, sys, threading, winsound, icons_rc, atexit
 from collections import OrderedDict
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QIcon
@@ -33,6 +33,11 @@ pressingKey = False
 layoutmanager = None
 codeslayoutview = None
 typestate = None
+
+hm = None
+
+configfile = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.json"))
+
 
 class TypeState (PresageCallback):
     def __init__ (self):
@@ -115,7 +120,7 @@ def disableKeyUpDown(event):
     return False
 
 def OnKeyboardEventDown(event):
-    global lastkeydowntime, endCharacterTimer, myConfig, ctrlpressed, shiftpressed, disabled
+    global lastkeydowntime, endCharacterTimer, ctrlpressed, shiftpressed, disabled
     #print "eventid: " + str(event.KeyID)
     if pressingKey:
         return True
@@ -155,15 +160,16 @@ def OnKeyboardEventDown(event):
 #        return False
     if lastkeydowntime != -1:
         return False
-    keys = (myConfig['keyone'],) if myConfig['onekey'] else \
-      (myConfig['keyone'], myConfig['keytwo']) if myConfig['twokey'] else \
-      (myConfig['keyone'], myConfig['keytwo'], myConfig['keythree']) # threekey
-    tmp = tuple(map(lambda a:a[1], filter(lambda a:a[0]==event.KeyID, zip(keys, range(len(keys))))))
+    keys = (myConfig['keyone'],) if myConfig['keylen'] == 1 else \
+      (myConfig['keyone'], myConfig['keytwo']) if myConfig['keylen'] == 2 else \
+      (myConfig['keyone'], myConfig['keytwo'], myConfig['keylen'] == 3) # threekey
+    tmp = tuple(map(lambda a:a[1], filter(lambda a:a[0].keywin32 == event.KeyID, zip(keys, range(len(keys))))))
     if len(tmp) == 0:
         return True
     keyidx = tmp[0]
     try:
-        endCharacterTimer.cancel()
+        if endCharacterTimer is not None:
+            endCharacterTimer.cancel()
         if keyidx == 2: # third key
             endCharacter()
     except NameError:
@@ -216,7 +222,7 @@ def enum(name, **enums):
     return Enum(name, enums)
 
 def OnKeyboardEventUp(event):
-    global lastkeydowntime, MyEvents, currentCharacter, endCharacterTimer, hm, myConfig, disabled
+    global lastkeydowntime, MyEvents, currentCharacter, endCharacterTimer, hm, disabled
 
     if pressingKey:
         return True
@@ -240,19 +246,20 @@ def OnKeyboardEventUp(event):
         #print 'KeyID:', event.KeyID
         #print 'ScanCode:', event.ScanCode
         #print(str(lastkeydowntime))
-    keys = (myConfig['keyone'],) if myConfig['onekey'] else \
+    keys = (myConfig['keyone'],) if myConfig['keylen'] == 1 else \
       (myConfig['keyone'], myConfig['keytwo'])
-    tmp = tuple(map(lambda a:a[1], filter(lambda a:a[0]==event.KeyID, zip(keys, range(len(keys))))))
+    tmp = tuple(map(lambda a:a[1], filter(lambda a:a[0].keywin32==event.KeyID, zip(keys, range(len(keys))))))
     if len(tmp) == 0: # is not the target key
         return True
     keyidx = tmp[0]
     msSinceLastKeyDown = event.Time - lastkeydowntime
     lastkeydowntime = -1
-    endCharacterTimer = threading.Timer(float(myConfig['minLetterPause'])/1000.0, endCharacter)
-    #print str(float(myConfig['minLetterPause']))
-    endCharacterTimer.start()
+    if myConfig['keylen'] != 3:
+        endCharacterTimer = threading.Timer(float(myConfig['minLetterPause'])/1000.0, endCharacter)
+        #print str(float(myConfig['minLetterPause']))
+        endCharacterTimer.start()
     
-    if (myConfig['onekey']):    
+    if (myConfig['keylen'] == 1):    
         if (msSinceLastKeyDown < float(myConfig['maxDitTime'])):
             addDit()
             if (myConfig['withsound']):
@@ -307,17 +314,27 @@ def getPossibleCombos(currentCharacter):
         if (len(action) >= len(x) and action[:len(x)] == x):
             possibleactions.append(action)
     print("possible: " + str(possibleactions))
-    
-#unused
-def parseConfigFile():
-    global maxDitTime, minLetterPause, debug
-    config = configparser.RawConfigParser()
-    config.read('MorseCode.cfg')
-    config.sections
-    maxDitTime = config.getint('Input', 'maxDitTime')
-    minLetterPause = config.getint('Input', 'minLetterPause')
-    debug = config.getboolean('Various', 'debug')
 
+def newConfig ():
+    return {}
+
+def saveConfig (configfile, config):
+    data = dict()
+    data.update(config)
+    for name in ['keyone', 'keytwo', 'keythree']:
+        if name in data:
+            data[name] = data[name].name
+    with open(configfile, "w") as f:
+        f.write(json.dumps(data, indent=2))
+
+def readConfig (configfile):
+    with open(configfile, "r") as f:
+        data = json.loads(f.read())
+        for name in ['keyone', 'keytwo', 'keythree']:
+            if name in data:
+                data[name] = keystrokemap[data[name]]
+        return data
+    
 class Action (object):
     def __init__ (self, item):
         self.item = item
@@ -521,7 +538,7 @@ class PredictionSelectLayoutAction (Action):
                         TypeKey(keys[0].keywin32)
     
 def initActions():
-    global actions, keystrokes
+    global actions, keystrokes, keystrokemap
     keystrokes = list(map(lambda a: KeyStroke(*a), (
         ("A", "a", win32api.VkKeyScan("a"), "a"), ("B", "b", win32api.VkKeyScan("b"), "b"), ("C", "c", win32api.VkKeyScan("c"), "c"), ("D", "d", win32api.VkKeyScan("d"), "d"), 
         ("E", "e", win32api.VkKeyScan("e"), "e"), ("F", "f", win32api.VkKeyScan("f"), "f"), ("G", "g", win32api.VkKeyScan("g"), "g"), ("H", "h", win32api.VkKeyScan("h"), "h"), 
@@ -549,10 +566,13 @@ def initActions():
         ("END", "end", win32con.VK_END, None), ("INSERT", "insert", win32con.VK_INSERT, None), ("DELETE", "del", win32con.VK_DELETE, None), 
         ("STARTMENU", "start", win32con.VK_MENU, None), ("SHIFT", "shift", win32con.VK_SHIFT, None), ("ALT", "alt", win32con.VK_MENU, None),
         ("CTRL", "ctrl", win32con.VK_CONTROL, None), ("WINDOWS", "win", win32con.VK_LWIN, None), ("APPKEY", "app", win32con.VK_LWIN, None), 
+        ("LCTRL", "left ctrl", win32con.VK_LCONTROL, None), ("RCTRL", "right ctrl", win32con.VK_RCONTROL, None),
+        ("LSHIFT", "left shift", win32con.VK_LSHIFT, None), ("RSHIFT", "right shift", win32con.VK_RSHIFT, None),
         ("CAPSLOCK", "caps", win32con.VK_CAPITAL, None),
         ("F1", "F1", win32con.VK_F1, None), ("F2", "F2", win32con.VK_F2, None), ("F3", "F3", win32con.VK_F3, None), ("F4", "F4", win32con.VK_F4, None), ("F5", "F5", win32con.VK_F5, None), 
         ("F6", "F6", win32con.VK_F6, None), ("F7", "F7", win32con.VK_F7, None), ("F8", "F8", win32con.VK_F8, None), ("F9", "F9", win32con.VK_F9, None), ("F10", "F10", win32con.VK_F10, None),
         ("F11", "F11", win32con.VK_F11, None), ("F12", "F12", win32con.VK_F12, None))))
+    keystrokemap = dict(map(lambda a: (a.name, a), keystrokes))
     actionskwargs = dict(map(lambda a: (a[0], (ActionLegacy, a[1], a[2])),
        (("REPEATMODE", 0, "repeat"), ("SOUND", 8, "snd"), ("CODESET", 9, "code"),
         ("MOUSERIGHT5", 2, "ms right 5"),
@@ -661,7 +681,8 @@ class Window(QDialog):
         self.trayIcon.activated.connect(self.iconActivated)
 
         self.GOButton.clicked.connect(self.goForIt)
-        
+        self.SaveButton.clicked.connect(self.saveSettings)
+
         self.withSound.clicked.connect(self.updateAudioProperties)
         mainLayout = QVBoxLayout()
         mainLayout.addWidget(self.iconGroupBox)
@@ -680,42 +701,47 @@ class Window(QDialog):
             self.iconComboBoxSoundDah.setEnabled(True)
         else:
             self.iconComboBoxSoundDit.setEnabled(False)
-            self.iconComboBoxSoundDah.setEnabled(False)           
+            self.iconComboBoxSoundDah.setEnabled(False)
+
+    def start (self, config):
+        global myConfig
+        myConfig = dict()
+        myConfig.update(config)
+        myConfig['fontsizescale'] = int(config['fontsizescale']) / 100.0
+        Init()
+        Go()
+
+    def collectConfig (self):
+        config = dict();
+        config['keylen'] = 1 if self.keySelectionRadioOneKey.isChecked() else \
+            2 if self.keySelectionRadioTwoKey.isChecked() else \
+            3 if self.keySelectionRadioThreeKey.isChecked() else 1
+        config['keyone'] = self.iconComboBoxKeyOne.itemData(self.iconComboBoxKeyOne.currentIndex())
+        config['keytwo'] = self.iconComboBoxKeyTwo.itemData(self.iconComboBoxKeyTwo.currentIndex())
+        config['keythree'] = self.iconComboBoxKeyThree.itemData(self.iconComboBoxKeyThree.currentIndex())
+        config['maxDitTime'] = self.maxDitTimeEdit.text()
+        config['minLetterPause'] = self.minLetterPauseEdit.text()
+        config['withsound'] = self.withSound.isChecked() 
+        config['SoundDit'] = self.iconComboBoxSoundDit.itemData(self.iconComboBoxSoundDit.currentIndex())
+        config['SoundDah'] = self.iconComboBoxSoundDah.itemData(self.iconComboBoxSoundDah.currentIndex())
+        config['debug'] = self.withDebug.isChecked()
+        config['off'] = False
+        config['fontsizescale'] = self.fontSizeScaleEdit.text()
+        config['upperchars'] = self.upperCharsCheck.isChecked()
+        config['autostart'] = self.autostartCheckbox.isChecked()
+        return config
 
     def goForIt(self):
         global myConfig
         if self.trayIcon.isVisible():
             QMessageBox.information(self, "MorseWriter", "The program will run in the system tray. To terminate the program, choose <b>Quit</b> in the context menu of the system tray entry.")
             self.hide()
-        
-        myConfig = dict();
-        myConfig['onekey'] = self.keySelectionRadioOneKey.isChecked()
-        myConfig['twokey'] = self.keySelectionRadioTwoKey.isChecked()
-        myConfig['threekey'] = self.keySelectionRadioThreeKey.isChecked()
-        myConfig['keyone'] = self.iconComboBoxKeyOne.itemData(self.iconComboBoxKeyOne.currentIndex())
-        myConfig['keytwo'] = self.iconComboBoxKeyTwo.itemData(self.iconComboBoxKeyTwo.currentIndex())
-        myConfig['keythree'] = self.iconComboBoxKeyThree.itemData(self.iconComboBoxKeyThree.currentIndex())
-        myConfig['maxDitTime'] = self.maxDitTimeEdit.text()
-        if (self.keySelectionRadioThreeKey.isChecked()):
-            myConfig['minLetterPause'] = 10000000000
-        else:
-            myConfig['minLetterPause'] = self.minLetterPauseEdit.text()
-        myConfig['withsound'] = self.withSound.isChecked() 
-        myConfig['SoundDit'] = self.iconComboBoxSoundDit.itemData(self.iconComboBoxSoundDit.currentIndex())
-        myConfig['SoundDah'] = self.iconComboBoxSoundDah.itemData(self.iconComboBoxSoundDah.currentIndex())
-        myConfig['debug'] = self.withDebug.isChecked()
-        myConfig['off'] = False
+        myConfig = self.collectConfig()
+        myConfig['fontsizescale'] = int(myConfig['fontsizescale']) / 100.0
         if myConfig['debug']:
-            print("Config: " + str(myConfig['onekey']) + " / " + str(myConfig['keyone']) + " / " + str(myConfig['keytwo']) + " / " + str(myConfig['keythree']) + " / " + str(myConfig['maxDitTime']) + " / " + str(myConfig['minLetterPause']))
-        
+            print("Config: " + str(myConfig['keylen']) + " / " + str(myConfig['keyone']) + " / " + str(myConfig['keytwo']) + " / " + str(myConfig['keythree']) + " / " + str(myConfig['maxDitTime']) + " / " + str(myConfig['minLetterPause']))
         Init()
         Go()
-
-    def setVisible(self, visible):
-        self.minimizeAction.setEnabled(visible)
-        self.maximizeAction.setEnabled(not self.isMaximized())
-        self.restoreAction.setEnabled(self.isMaximized() or not visible)
-        super(Window, self).setVisible(visible)
 
     def closeEvent(self, event):
         app.quit
@@ -735,13 +761,24 @@ class Window(QDialog):
     def showMessage(self):
         icon = QSystemTrayIcon.MessageIcon(self.typeComboBox.itemData(self.typeComboBox.currentIndex()))
         self.trayIcon.showMessage(self.titleEdit.text(), self.bodyEdit.toPlainText(), icon, self.durationSpinBox.value() * 1000)
+        
+    def mkKeyStrokeComboBox (self, items, currentkey, valuedict=None):
+        box = QComboBox()
+        for key, val in items:
+            box.addItem(key, valuedict[val] if valuedict is not None else val)
+        try:
+            values = list(map(lambda a:valuedict[a[1]] if valuedict is not None else a[1], items))
+            box.setCurrentIndex(values.index(currentkey))
+        except ValueError:
+            pass
+        return box
 
     def createIconGroupBox(self):
         self.iconGroupBox = QGroupBox("Input Settings")
         
-        self.keySelectionRadioOneKey = QRadioButton("One Key");
-        self.keySelectionRadioTwoKey = QRadioButton("Two Key");
-        self.keySelectionRadioThreeKey = QRadioButton("Three Key");
+        self.keySelectionRadioOneKey = QRadioButton("One Key")
+        self.keySelectionRadioTwoKey = QRadioButton("Two Key")
+        self.keySelectionRadioThreeKey = QRadioButton("Three Key")
         
         inputSettingsLayout = QVBoxLayout()
         
@@ -750,28 +787,21 @@ class Window(QDialog):
         inputRadioButtonsLayout.addWidget(self.keySelectionRadioTwoKey)
         inputRadioButtonsLayout.addWidget(self.keySelectionRadioThreeKey)
         inputSettingsLayout.addLayout(inputRadioButtonsLayout)       
-
+        
         inputKeyComboBoxesLayout = QHBoxLayout()
-        self.iconComboBoxKeyOne = QComboBox()
-        self.iconComboBoxKeyOne.addItem("SPACE", win32con.VK_SPACE)
-        self.iconComboBoxKeyOne.addItem("ENTER", win32con.VK_RETURN)
-        self.iconComboBoxKeyOne.addItem("1", win32api.VkKeyScan('1'))
-        self.iconComboBoxKeyOne.addItem("2", win32api.VkKeyScan('2'))
-        self.iconComboBoxKeyOne.addItem("Z", win32api.VkKeyScan('z'))
-        self.iconComboBoxKeyOne.addItem("X", win32api.VkKeyScan('x'))
-        self.iconComboBoxKeyOne.addItem("F8", win32con.VK_F8)
-        self.iconComboBoxKeyOne.addItem("F9", win32con.VK_F9)
-        self.iconComboBoxKeyTwo = QComboBox()
-        self.iconComboBoxKeyTwo.addItem("ENTER", win32con.VK_RETURN)
-        self.iconComboBoxKeyTwo.addItem("2", win32api.VkKeyScan('2'))
-        self.iconComboBoxKeyTwo.addItem("Z", win32api.VkKeyScan('z'))
-        self.iconComboBoxKeyTwo.addItem("F8", win32con.VK_F8)
-        self.iconComboBoxKeyThree = QComboBox()
-        self.iconComboBoxKeyThree.addItem("Right Ctrl", win32con.VK_RCONTROL)
-        self.iconComboBoxKeyThree.addItem("left Ctrl", win32con.VK_LCONTROL)
-        self.iconComboBoxKeyThree.addItem("Right Shift", win32con.VK_RSHIFT)
-        self.iconComboBoxKeyThree.addItem("Left Shift", win32con.VK_LSHIFT)
-        self.iconComboBoxKeyThree.addItem("Alt", win32con.VK_MENU)
+        self.iconComboBoxKeyOne = self.mkKeyStrokeComboBox(
+            list(map(lambda a:(a,a),["SPACE", "ENTER", "ONE", "TWO", "Z", "X", "F8", "F9"])),
+            myConfig.get('keyone', None), keystrokemap
+        )
+        self.iconComboBoxKeyTwo = self.mkKeyStrokeComboBox(
+            list(map(lambda a:(a,a),["ENTER", "ONE", "TWO", "Z", "F8"])),
+            myConfig.get('keytwo', None), keystrokemap
+        )
+        self.iconComboBoxKeyThree = self.mkKeyStrokeComboBox(
+            [ ["Right Ctrl", "RCTRL"], ["Left Ctrl", "LCTRL"], ["Right Shift", "RSHIFT"],
+              ["Left Shift", "LSHIFT"], ["Alt", "ALT"] ],
+            myConfig.get('keythree', None), keystrokemap
+        )
         inputKeyComboBoxesLayout.addWidget(self.iconComboBoxKeyOne)
         inputKeyComboBoxesLayout.addWidget(self.iconComboBoxKeyTwo)
         inputKeyComboBoxesLayout.addWidget(self.iconComboBoxKeyThree)
@@ -780,15 +810,17 @@ class Window(QDialog):
         self.keySelectionRadioOneKey.toggled.connect(self.iconComboBoxKeyTwo.hide)
         self.keySelectionRadioOneKey.toggled.connect(self.iconComboBoxKeyThree.hide)
         self.keySelectionRadioTwoKey.toggled.connect(self.iconComboBoxKeyTwo.show)
+        self.keySelectionRadioTwoKey.toggled.connect(self.iconComboBoxKeyThree.hide)
         self.keySelectionRadioThreeKey.toggled.connect(self.iconComboBoxKeyThree.show)
-        self.keySelectionRadioThreeKey.toggled.connect(self.iconComboBoxKeyTwo.show)        
-        self.keySelectionRadioOneKey.click();     
-
+        self.keySelectionRadioThreeKey.toggled.connect(self.iconComboBoxKeyTwo.show)
+        
+        for index, name in [[1,'One'], [2,'Two'], [3,'Three']]: 
+            getattr(self, 'keySelectionRadio%sKey'%(name)).setChecked(myConfig.get('keylen', 1) == index)
         
         maxDitTimeLabel = QLabel("MaxDitTime (ms):")
-        self.maxDitTimeEdit = QLineEdit("350")
+        self.maxDitTimeEdit = QLineEdit(myConfig.get("maxDitTime", "350"))
         minLetterPauseLabel = QLabel("minLetterPause (ms):")
-        self.minLetterPauseEdit = QLineEdit("1000")
+        self.minLetterPauseEdit = QLineEdit(myConfig.get("minLetterPause", "1000"))
         TimingsLayout = QGridLayout()
         TimingsLayout.addWidget(maxDitTimeLabel, 0, 0)
         TimingsLayout.addWidget(self.maxDitTimeEdit, 0, 1, 1, 4)
@@ -798,28 +830,41 @@ class Window(QDialog):
         inputSettingsLayout.addLayout(TimingsLayout)
         
         self.withDebug = QCheckBox("Debug On")
-        self.withDebug.setChecked(False)
+        self.withDebug.setChecked(myConfig.get("debug", False))
         inputSettingsLayout.addWidget(self.withDebug)
         
         self.withSound = QCheckBox("Audible beeps")
-        self.withSound.setChecked(True)
+        self.withSound.setChecked(myConfig.get("withsound", True))
         inputSettingsLayout.addWidget(self.withSound)
+        
+        fontSizeScaleLabel = QLabel("FontSize (%):")
+        self.fontSizeScaleEdit = QLineEdit(myConfig.get("fontsizescale", "100"))
+        viewSettingSec = QGridLayout()
+        viewSettingSec.addWidget(fontSizeScaleLabel, 0, 0)
+        viewSettingSec.addWidget(self.fontSizeScaleEdit, 0, 1, 1, 2)
+        self.upperCharsCheck = QCheckBox("Upper case chars")
+        self.upperCharsCheck.setChecked(myConfig.get("upperchars", True))
+        viewSettingSec.addWidget(self.upperCharsCheck, 0, 3)
+        viewSettingSec.setRowStretch(4, 1)
+        inputSettingsLayout.addLayout(viewSettingSec)
 
-        self.iconComboBoxSoundDit = QComboBox()
-        self.iconComboBoxSoundDit.addItem("MB_OK", winsound.MB_OK)
-        self.iconComboBoxSoundDit.addItem("MB_ICONQUESTION", winsound.MB_ICONQUESTION)
-        self.iconComboBoxSoundDit.addItem("MB_ICONHAND", winsound.MB_ICONHAND)
-        self.iconComboBoxSoundDit.addItem("MB_ICONEXCLAMATION", winsound.MB_ICONEXCLAMATION)
-        self.iconComboBoxSoundDit.addItem("MB_ICONASTERISK", winsound.MB_ICONASTERISK)
-        self.iconComboBoxSoundDit.addItem("DEFAULT", -1)
+        self.iconComboBoxSoundDit = self.mkKeyStrokeComboBox([
+            ["MB_OK", winsound.MB_OK],
+            ["MB_ICONQUESTION", winsound.MB_ICONQUESTION],
+            ["MB_ICONHAND", winsound.MB_ICONHAND],
+            ["MB_ICONEXCLAMATION", winsound.MB_ICONEXCLAMATION],
+            ["MB_ICONASTERISK", winsound.MB_ICONASTERISK],
+            ["DEFAULT", -1],
+        ], myConfig.get('SoundDit', None))
 
-        self.iconComboBoxSoundDah = QComboBox()
-        self.iconComboBoxSoundDah.addItem("MB_OK", winsound.MB_OK)
-        self.iconComboBoxSoundDah.addItem("MB_ICONQUESTION", winsound.MB_ICONQUESTION)
-        self.iconComboBoxSoundDah.addItem("MB_ICONHAND", winsound.MB_ICONHAND)
-        self.iconComboBoxSoundDah.addItem("MB_ICONEXCLAMATION", winsound.MB_ICONEXCLAMATION)
-        self.iconComboBoxSoundDah.addItem("MB_ICONASTERISK", winsound.MB_ICONASTERISK)
-        self.iconComboBoxSoundDah.addItem("DEFAULT", -1)
+        self.iconComboBoxSoundDah = self.mkKeyStrokeComboBox([
+            ["MB_OK", winsound.MB_OK],
+            ["MB_ICONQUESTION", winsound.MB_ICONQUESTION],
+            ["MB_ICONHAND", winsound.MB_ICONHAND],
+            ["MB_ICONEXCLAMATION", winsound.MB_ICONEXCLAMATION],
+            ["MB_ICONASTERISK", winsound.MB_ICONASTERISK],
+            ["DEFAULT", -1],
+        ], myConfig.get('SoundDah', None))
 
         DitSoundLabel = QLabel("Dit sound: ")
         DahSoundLabel = QLabel("Dah sound: ")
@@ -829,33 +874,61 @@ class Window(QDialog):
         SoundConfigLayout.addWidget(DahSoundLabel, 1, 0)
         SoundConfigLayout.addWidget(self.iconComboBoxSoundDah, 1, 1, 1, 4)
         
+        self.autostartCheckbox = QCheckBox("Auto-Start")
+        self.autostartCheckbox.setChecked(myConfig.get("autostart", True))
+        inputSettingsLayout.addWidget(self.autostartCheckbox)
+        
         #inputSettingsLayout.addLayout(SoundConfigLayout)
+        self.SaveButton = QPushButton("Save Settings")
         self.GOButton = QPushButton("GO!")
-        inputSettingsLayout.addWidget(self.GOButton)
+        buttonsSec = QHBoxLayout()
+        buttonsSec.addWidget(self.SaveButton)
+        buttonsSec.addWidget(self.GOButton)
+        inputSettingsLayout.addLayout(buttonsSec)
         
         self.iconGroupBox.setLayout(inputSettingsLayout)
 
+    def saveSettings (self):
+        config = self.collectConfig()
+        data = dict()
+        data.update(config)
+        saveConfig(configfile, data)
+        
     def toggleOnOff(self):
         global myConfig
         if myConfig['off']:
             myConfig['off'] = False
         else:
             myConfig['off'] = True
+    
+    def stopIt (self):
+        global hm, codeslayoutview
+        if codeslayoutview is not None:
+            codeslayoutview.hide()
+            codeslayoutview = None
+        # detect if it is running
+        if hm is not None:
+            hm.UnhookKeyboard()
+            hm = None
+        pythoncom.PumpMessages()
+    
+    def backToSettings (self):
+        self.showNormal()
+        self.stopIt()
+    
+    def onOpenSettings (self):
+        self.backToSettings()
 
     def createActions(self):
-        self.minimizeAction = QAction("Minimize", self, triggered=self.hide)
-        self.maximizeAction = QAction("Maximize", self, triggered=self.showMaximized)
-        self.restoreAction = QAction("Restore", self, triggered=self.showNormal)
         self.onOffAction = QAction("OnOff", self, triggered=self.toggleOnOff)
+        self.onOpenSettingsAction = QAction("Open Settings", self, triggered=self.onOpenSettings)
         self.quitAction = QAction("Quit", self, triggered=sys.exit)
 
     def createTrayIcon(self):
         self.trayIconMenu = QMenu(self)
-        self.trayIconMenu.addAction(self.minimizeAction)
-        self.trayIconMenu.addAction(self.maximizeAction)
-        self.trayIconMenu.addAction(self.restoreAction)
-        self.trayIconMenu.addSeparator()
         self.trayIconMenu.addAction(self.onOffAction)
+        self.trayIconMenu.addSeparator()
+        self.trayIconMenu.addAction(self.onOpenSettingsAction)
         self.trayIconMenu.addSeparator()
         self.trayIconMenu.addAction(self.quitAction)
         self.trayIcon = QSystemTrayIcon(self)
@@ -876,7 +949,7 @@ class CodeRepresentation(QWidget):
         self.codeline.setContentsMargins(0, 0, 0, 0)
         self.codeline.move(20, 30)
         self.code = self.codetocode(code)
-        vlayout.setContentsMargins(0, 0, 0, 0)
+        vlayout.setContentsMargins(5, 5, 5, 5)
         vlayout.addWidget(self.character)
         vlayout.addWidget(self.codeline)
         vlayout.setAlignment(self.character, Qt.AlignCenter)
@@ -909,9 +982,15 @@ class CodeRepresentation(QWidget):
         codeselectrange = self.disabledchars if enabled  and self.disabledchars > 0 else 0
         self.character.setDisabled(not enabled)
         self.codeline.setDisabled(not enabled)
-        self.character.setText("<font color='{}' size='3'>{}</font>".format('blue' if enabled else 'lightgrey', self.item_label()))
-        self.codeline.setText("<font color='green' size='5'>{}</font><font color='{}' size='5'>{}</font>"
-                              .format(self.code[:codeselectrange], 'red' if enabled else 'lightgrey', self.code[codeselectrange:]))
+        charfontsize = int(3.0 * myConfig['fontsizescale'])
+        codefontsize = int(5.0 * myConfig['fontsizescale'])
+        self.character.setText("<font style='color:{color};font-weight:bold;' size='{fontsize}'>{text}</font>"
+                               .format(color='blue' if enabled else 'lightgrey', 
+                                       text=(self.item_label().upper() if myConfig['upperchars'] else self.item_label()),
+                                       fontsize=charfontsize))
+        self.codeline.setText("<font size='{fontsize}'><font color='green'>{selecttext}</font><font color='{color}'>{text}</font></font>"
+                              .format(text=self.code[codeselectrange:], selecttext=self.code[:codeselectrange], 
+                                      color='red' if enabled else 'lightgrey', fontsize=codefontsize))
         
         
     def enabled(self):
@@ -997,11 +1076,18 @@ class CodesLayoutViewWidget(QWidget):
     def reset(self):
         for item in self.crs.values():
             item.reset()
+            
+    def closeEvent(self, event):
+        window.backToSettings()
     
 if __name__ == '__main__':
-    global layoutmanage
+    global layoutmanage, window, myConfig
     import sys
     initActions()
+    try:
+        myConfig = readConfig(configfile)
+    except FileNotFoundError:
+        myConfig = newConfig()
     layoutmanager = LayoutManager(os.path.join(os.path.dirname(os.path.realpath(__file__)), "layouts.json"), actions)
     if layoutmanager.active is None:
         raise AssertionError("layouts.json has no mainlayout")
@@ -1018,5 +1104,8 @@ if __name__ == '__main__':
     #code.disable()
     #code.tickDitDah()
     #code.tickDitDah()
-    window.show()
+    if myConfig.get("autostart", False):
+        window.start(myConfig)
+    else:
+        window.show()
     sys.exit(app.exec_())
