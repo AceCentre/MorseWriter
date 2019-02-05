@@ -10,6 +10,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QVBoxLayout, QDialog, QWidget, QApplication, QSystemTrayIcon, QGroupBox, QRadioButton, \
   QMessageBox, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QLineEdit, QGridLayout, QCheckBox, QPushButton, QAction, \
   QMenu
+from struct import pack, unpack
 from enum import Enum
 import json
 import os
@@ -20,9 +21,7 @@ lastkeydowntime = -1
 presageconfig = os.path.join(os.path.dirname(os.path.realpath(__file__)), "res", "presage.xml")
 presagedll = os.path.join(os.path.dirname(os.path.realpath(__file__)), "libpresage-1.dll")
 
-
-ctrlpressed = False
-shiftpressed = False
+keystrokes_state = {}
 disabled = False
 
 currentX = 0
@@ -37,7 +36,6 @@ typestate = None
 hm = None
 
 configfile = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.json"))
-
 
 class TypeState (PresageCallback):
     def __init__ (self):
@@ -87,7 +85,10 @@ class LayoutManager (object):
 def PressKey(down, key):
     global pressingKey
     pressingKey = True
-    win32api.keybd_event(key, 0, (not down) * win32con.KEYEVENTF_KEYUP)
+    if myConfig['debug']:
+        print("presskey: ",key, "down" if down else "up")
+    # win32api.MAPVK_VK_TO_VSC = 0, one may need to pass this as second argument `win32api.MapVirtualKey(key, 0)`
+    win32api.keybd_event(key, win32api.MapVirtualKey(key, 0), (not down) * win32con.KEYEVENTF_KEYUP)
     pressingKey = False
 
 def TypeKey(key, keystroke_time=10):
@@ -116,30 +117,25 @@ def endCharacter():
 
 def disableKeyUpDown(event):
     if pressingKey:
+        updateKeyboardState(event)
+        onKeyboardEvent(event)
         return True
     return False
 
 def OnKeyboardEventDown(event):
-    global lastkeydowntime, endCharacterTimer, ctrlpressed, shiftpressed, disabled
+    global lastkeydowntime, endCharacterTimer, disabled
     #print "eventid: " + str(event.KeyID)
-    if pressingKey:
-        return True
-    if (event.KeyID == 162 or event.KeyID == 163):
-        ctrlpressed = True
-    if (event.KeyID == 160 or event.KeyID == 161):
-        shiftpressed = True
-    if (event.KeyID == 80 and ctrlpressed and shiftpressed):
+    updateKeyboardState(event)
+    if (event.KeyID == 80 and getKeyStrokeState("CTRL")["down"] and getKeyStrokeState("SHIFT")['down']):
         if (disabled == True):
-     #       print "set disabled = False"
             disabled = False
-            ctrlpressed = False
-            shiftpressed = False
             return True
         else:
-     #       print "set disabled = True"
             disabled = True
             return True
-            
+    onKeyboardEvent(event)
+    if pressingKey:
+        return True
     if (disabled):
         TypeKey(event.KeyID)
         return False
@@ -178,6 +174,20 @@ def OnKeyboardEventDown(event):
     hm.KeyDown = disableKeyUpDown
     hm.KeyUp = OnKeyboardEventUp
     return False
+
+keyFeedbackTimer = None
+
+def onKeyboardEvent (event):
+    global keyFeedbackTimer
+    if keyFeedbackTimer != None:
+        keyFeedbackTimer.cancel()
+    keyFeedbackTimer = threading.Timer(0.1, onKeyFeedback)
+    keyFeedbackTimer.start()
+
+def onKeyFeedback ():
+    if codeslayoutview is not None:
+        codeslayoutview.feedbackSignal.emit()
+
 
 def moveMouse():
     global currentX, currentY
@@ -220,16 +230,68 @@ def releaseMouseDown():
 
 def enum(name, **enums):
     return Enum(name, enums)
+    
+vkeys_map = {
+    "RSHIFT": ["SHIFT"],
+    "LSHIFT": ["SHIFT"],
+    "RALT": ["ALT"],
+    "LALT": ["ALT"],
+    "RCTRL": ["CTRL"],
+    "LCTRL": ["CTRL"],
+}
+
+def getKeyStrokeState (name):
+    global keystrokes_state
+    state = keystrokes_state.get(name, None)
+    if state is None:
+        state = {"down":False}
+        keystroke = keystrokemap[name]
+        keystate = unpack("H", pack("h", win32api.GetKeyState(keystroke.keywin32)))[0]
+        state['down'] = (keystate & 1<<15) != 0
+        if name == "CAPSLOCK":
+            state['locked'] = (keystate & 1) == 1
+        keystrokes_state[name] = state
+    return state
+    
+def onRecheckKeyboardState (name):
+    global keystrokes_state
+    state = getKeyStrokeState(name)
+    keystroke = keystrokemap[name]
+    keystate = unpack("H", pack("h", win32api.GetKeyState(keystroke.keywin32)))[0]
+    changed = False
+    if ((keystate & 1<<15) != 0) != state['down']:
+        state['down'] = not state['down']
+        changed = True
+    if name == "CAPSLOCK":
+        if ((keystate & 1) == 1) != state['locked']:
+            state['locked'] = not state['locked']
+            changed = True
+    if changed:
+        onKeyboardEvent(None)
+
+def updateKeyboardState (event):
+    keydown = True if event.Message in (win32con.WM_KEYDOWN, win32con.WM_SYSKEYDOWN) else False
+    ckeystrokes = list(filter(lambda a:a.keywin32 == event.KeyID, keystrokes))
+    if len(ckeystrokes) > 0:
+        for skey in vkeys_map.get(ckeystrokes[0].name, []):
+            ckeystrokes.append(keystrokemap[skey])
+    for akeystroke in ckeystrokes:
+        state = getKeyStrokeState(akeystroke.name)
+        state["down"] = keydown
+        if akeystroke.name == "CAPSLOCK" and keydown:
+            if event.Time - state.get('__lasttime', 0) > 300:
+                state["locked"] = not state.get("locked", False)
+            state['__lasttime'] = event.Time
+        keyFeedbackTimer = threading.Timer(0.5, onRecheckKeyboardState, [akeystroke.name])
+        keyFeedbackTimer.start()
+    
 
 def OnKeyboardEventUp(event):
     global lastkeydowntime, MyEvents, currentCharacter, endCharacterTimer, hm, disabled
-
+    updateKeyboardState(event)
+    onKeyboardEvent(event)
     if pressingKey:
         return True
-    if (event.KeyID == 162 or event.KeyID == 163):
-        ctrlpressed = False
-    if (event.KeyID == 160 or event.KeyID == 161):
-        shiftpressed = False
     
     if myConfig['off']:
         return True
@@ -259,7 +321,7 @@ def OnKeyboardEventUp(event):
         #print str(float(myConfig['minLetterPause']))
         endCharacterTimer.start()
     
-    if (myConfig['keylen'] == 1):    
+    if (myConfig['keylen'] == 1):
         if (msSinceLastKeyDown < float(myConfig['maxDitTime'])):
             addDit()
             if (myConfig['withsound']):
@@ -291,8 +353,8 @@ def addDit():
     currentCharacter.append(MyEvents.DIT.value)
     if (myConfig['withsound']):
         #winsound.Beep(int(myConfig['SoundDitFrequency']), int(myConfig['SoundDitDuration']))
-        #winsound.MessageBeep(myConfig['SoundDit'].toInt()[0])
-        winsound.Beep(440, 33)
+        winsound.MessageBeep(myConfig.get('SoundDit', -1))
+        #winsound.Beep(440, 33)
     #combos = getPossibleCombos(currentCharacter)
     codeslayoutview.Dit()
 
@@ -300,8 +362,8 @@ def addDah():
     currentCharacter.append(MyEvents.DAH.value)
     if (myConfig['withsound']):
         #winsound.Beep(int(myConfig['SoundDitFrequency']), int(myConfig['SoundDitDuration']))
-        #winsound.MessageBeep(myConfig['SoundDah'].toInt()[0])
-        winsound.Beep(440, 100)
+        winsound.MessageBeep(myConfig.get('SoundDah', -1))
+        #winsound.Beep(440, 100)
     #combos = getPossibleCombos(currentCharacter)
     codeslayoutview.Dah()
 
@@ -348,6 +410,8 @@ class ActionLegacy (Action):
         super(ActionLegacy, self).__init__(item)
         self.key = key
         self.label = label
+    def getlabel (self):
+        return self.label
     def perform (self):
         global repeaton, repeatkey
         key = self.key
@@ -465,32 +529,42 @@ class KeyStroke (object):
         self.character = character
         
 class ActionKeyStroke (Action):
-    def __init__ (self, item, key):
+    def __init__ (self, item, key, toggle_action=False):
         super(ActionKeyStroke, self).__init__(item)
         self.key = key
+        self.toggle_action = toggle_action 
     def getlabel (self):
         return self.key.label
     def perform (self):
         key = self.key.keywin32
-        if (repeaton):
-            if (repeatkey == None):
-                repeatkey = key
+        if self.toggle_action:
+            isdown = getKeyStrokeState(self.key.name)["down"]
+            if isdown:
+                PressKey(False, key)
+            else:
+                PressKey(True, key)
+        else:
+            if (repeaton):
+                if (repeatkey == None):
+                    repeatkey = key
+                else:
+                    if myConfig['debug']:
+                        print("repeat code: ", repeatkey, " + ", key)
+                    PressKey(True, repeatkey)
+                    TypeKey(key)
+                    PressKey(False, repeatkey)
             else:
                 if myConfig['debug']:
-                    print("repeat code: ", repeatkey, " + ", key)
-                PressKey(True, repeatkey)
+                    print("code found: ", key)
+                #win32api.VkKeyScan('1')
                 TypeKey(key)
-                PressKey(False, repeatkey)
-        else:
-            if myConfig['debug']:
-                print("code found: ", key)
-            #win32api.VkKeyScan('1')
-            TypeKey(key)
-            if typestate != None:
-                if self.key.name == "BACKSPACE":
-                    typestate.popchar()
-                elif self.key.character != None:
-                    typestate.pushchar(self.key.character)
+                if typestate != None:
+                    if self.key.name == "BACKSPACE":
+                        typestate.popchar()
+                    elif self.key.character != None:
+                        typestate.pushchar(self.key.character)
+
+
 class ChangeLayoutAction (Action):
     def perform (self):
         global typestate
@@ -539,7 +613,7 @@ class PredictionSelectLayoutAction (Action):
     
 def initActions():
     global actions, keystrokes, keystrokemap
-    keystrokes = list(map(lambda a: KeyStroke(*a), (
+    keystrokesdata = list(map(lambda a: (KeyStroke(*a[:4]), a[4:]), (
         ("A", "a", win32api.VkKeyScan("a"), "a"), ("B", "b", win32api.VkKeyScan("b"), "b"), ("C", "c", win32api.VkKeyScan("c"), "c"), ("D", "d", win32api.VkKeyScan("d"), "d"), 
         ("E", "e", win32api.VkKeyScan("e"), "e"), ("F", "f", win32api.VkKeyScan("f"), "f"), ("G", "g", win32api.VkKeyScan("g"), "g"), ("H", "h", win32api.VkKeyScan("h"), "h"), 
         ("I", "i", win32api.VkKeyScan("i"), "i"), ("J", "j", win32api.VkKeyScan("j"), "j"), ("K", "k", win32api.VkKeyScan("k"), "k"), ("L", "l", win32api.VkKeyScan("l"), "l"), 
@@ -564,14 +638,16 @@ def initActions():
         ("LEFTARROW", "left", win32con.VK_LEFT, None), ("RIGHTARROW", "right", win32con.VK_RIGHT, "right"),
         ("UPARROW", "up", win32con.VK_UP, "up"), ("DOWNARROW", "down", win32con.VK_DOWN, "down"), ("ESCAPE", "esc", win32con.VK_ESCAPE, "esc"), ("HOME", "home", win32con.VK_HOME, "home"), 
         ("END", "end", win32con.VK_END, None), ("INSERT", "insert", win32con.VK_INSERT, None), ("DELETE", "del", win32con.VK_DELETE, None), 
-        ("STARTMENU", "start", win32con.VK_MENU, None), ("SHIFT", "shift", win32con.VK_SHIFT, None), ("ALT", "alt", win32con.VK_MENU, None),
-        ("CTRL", "ctrl", win32con.VK_CONTROL, None), ("WINDOWS", "win", win32con.VK_LWIN, None), ("APPKEY", "app", win32con.VK_LWIN, None), 
+        ("STARTMENU", "start", win32con.VK_MENU, None), ("SHIFT", "shift", win32con.VK_SHIFT, None, True), ("ALT", "alt", win32con.VK_MENU, None, True),
+        ("CTRL", "ctrl", win32con.VK_CONTROL, None, True), ("WINDOWS", "win", win32con.VK_LWIN, None), ("APPKEY", "app", win32con.VK_LWIN, None), 
         ("LCTRL", "left ctrl", win32con.VK_LCONTROL, None), ("RCTRL", "right ctrl", win32con.VK_RCONTROL, None),
         ("LSHIFT", "left shift", win32con.VK_LSHIFT, None), ("RSHIFT", "right shift", win32con.VK_RSHIFT, None),
+        ("RALT", "right alt", win32con.VK_RMENU, None), ("LALT", "alt", win32con.VK_LMENU, None),
         ("CAPSLOCK", "caps", win32con.VK_CAPITAL, None),
         ("F1", "F1", win32con.VK_F1, None), ("F2", "F2", win32con.VK_F2, None), ("F3", "F3", win32con.VK_F3, None), ("F4", "F4", win32con.VK_F4, None), ("F5", "F5", win32con.VK_F5, None), 
         ("F6", "F6", win32con.VK_F6, None), ("F7", "F7", win32con.VK_F7, None), ("F8", "F8", win32con.VK_F8, None), ("F9", "F9", win32con.VK_F9, None), ("F10", "F10", win32con.VK_F10, None),
         ("F11", "F11", win32con.VK_F11, None), ("F12", "F12", win32con.VK_F12, None))))
+    keystrokes = list(map(lambda a: a[0], keystrokesdata))
     keystrokemap = dict(map(lambda a: (a.name, a), keystrokes))
     actionskwargs = dict(map(lambda a: (a[0], (ActionLegacy, a[1], a[2])),
        (("REPEATMODE", 0, "repeat"), ("SOUND", 8, "snd"), ("CODESET", 9, "code"),
@@ -590,7 +666,7 @@ def initActions():
     actionskwargs.update(dict(
         CHANGELAYOUT=(ChangeLayoutAction,), PREDICTION_SELECT=(PredictionSelectLayoutAction,)
     ))
-    actionskwargs.update(dict(map(lambda a: (a.name, (ActionKeyStroke, a)), keystrokes)))
+    actionskwargs.update(dict(map(lambda a: (a[0].name, (ActionKeyStroke,) + a), keystrokesdata)))
     actions = enum('Actions', **actionskwargs)
     '''
     normalmapping = OrderedDict([('12',actions.A), ('2111',actions.B), ('2121',actions.C), ('211',actions.D), ('1',actions.E), ('1121',actions.F), 
@@ -729,6 +805,10 @@ class Window(QDialog):
         config['fontsizescale'] = self.fontSizeScaleEdit.text()
         config['upperchars'] = self.upperCharsCheck.isChecked()
         config['autostart'] = self.autostartCheckbox.isChecked()
+        config['winxaxis'] = "left" if self.keyWinPosXLeftRadio.isChecked() else "right"
+        config['winyaxis'] = "top" if self.keyWinPosYTopRadio.isChecked() else "bottom"
+        config['winposx'] = self.keyWinPosXEdit.text()
+        config['winposy'] = self.keyWinPosYEdit.text()
         return config
 
     def goForIt(self):
@@ -782,11 +862,13 @@ class Window(QDialog):
         
         inputSettingsLayout = QVBoxLayout()
         
+        inputRadioGroup = QGroupBox("Number of keys")
         inputRadioButtonsLayout = QHBoxLayout()
         inputRadioButtonsLayout.addWidget(self.keySelectionRadioOneKey)
         inputRadioButtonsLayout.addWidget(self.keySelectionRadioTwoKey)
         inputRadioButtonsLayout.addWidget(self.keySelectionRadioThreeKey)
-        inputSettingsLayout.addLayout(inputRadioButtonsLayout)       
+        inputRadioGroup.setLayout(inputRadioButtonsLayout)
+        inputSettingsLayout.addWidget(inputRadioGroup)
         
         inputKeyComboBoxesLayout = QHBoxLayout()
         self.iconComboBoxKeyOne = self.mkKeyStrokeComboBox(
@@ -878,7 +960,39 @@ class Window(QDialog):
         self.autostartCheckbox.setChecked(myConfig.get("autostart", True))
         inputSettingsLayout.addWidget(self.autostartCheckbox)
         
-        #inputSettingsLayout.addLayout(SoundConfigLayout)
+        inputSettingsLayout.addLayout(SoundConfigLayout)
+        
+        
+        inputRadioGroup = QGroupBox("Align window horizontally from")
+        posAxisLayout = QHBoxLayout()
+        self.keyWinPosXLeftRadio = QRadioButton("Left")
+        self.keyWinPosXRightRadio = QRadioButton("Right")
+        if myConfig.get("winxaxis", "left") == "left":
+            self.keyWinPosXLeftRadio.setChecked(True)
+        else:
+            self.keyWinPosXRightRadio.setChecked(True)
+        posAxisLayout.addWidget(self.keyWinPosXLeftRadio)
+        posAxisLayout.addWidget(self.keyWinPosXRightRadio)
+        self.keyWinPosXEdit = QLineEdit(myConfig.get("winposx", "10"))
+        inputRadioGroup.setLayout(posAxisLayout)
+        inputSettingsLayout.addWidget(inputRadioGroup)
+        inputSettingsLayout.addWidget(self.keyWinPosXEdit)
+
+        inputRadioGroup = QGroupBox("Align window vertically from")
+        posAxisLayout = QHBoxLayout()
+        self.keyWinPosYTopRadio = QRadioButton("Top")
+        self.keyWinPosYBottomRadio = QRadioButton("Bottom")
+        if myConfig.get("winyaxis", "top") == "top":
+            self.keyWinPosYTopRadio.setChecked(True)
+        else:
+            self.keyWinPosYBottomRadio.setChecked(True)
+        posAxisLayout.addWidget(self.keyWinPosYTopRadio)
+        posAxisLayout.addWidget(self.keyWinPosYBottomRadio)
+        self.keyWinPosYEdit = QLineEdit(myConfig.get("winposy", "10"))
+        inputRadioGroup.setLayout(posAxisLayout)
+        inputSettingsLayout.addWidget(inputRadioGroup)
+        inputSettingsLayout.addWidget(self.keyWinPosYEdit)
+        
         self.SaveButton = QPushButton("Save Settings")
         self.GOButton = QPushButton("GO!")
         buttonsSec = QHBoxLayout()
@@ -959,6 +1073,7 @@ class CodeRepresentation(QWidget):
      #   self.show()
         self.disabledchars = 0
         self.is_enabled = True
+        self.toggled = False
         self.updateView()
         
     def item_label (self):
@@ -984,10 +1099,11 @@ class CodeRepresentation(QWidget):
         self.codeline.setDisabled(not enabled)
         charfontsize = int(3.0 * myConfig['fontsizescale'])
         codefontsize = int(5.0 * myConfig['fontsizescale'])
-        self.character.setText("<font style='color:{color};font-weight:bold;' size='{fontsize}'>{text}</font>"
+        toggled = self.toggled
+        self.character.setText("<font style='background-color:{bgcolor};color:{color};font-weight:bold;' size='{fontsize}'>{text}</font>"
                                .format(color='blue' if enabled else 'lightgrey', 
                                        text=(self.item_label().upper() if myConfig['upperchars'] else self.item_label()),
-                                       fontsize=charfontsize))
+                                       fontsize=charfontsize, bgcolor="yellow" if toggled else "none"))
         self.codeline.setText("<font size='{fontsize}'><font color='green'>{selecttext}</font><font color='{color}'>{text}</font></font>"
                               .format(text=self.code[codeselectrange:], selecttext=self.code[:codeselectrange], 
                                       color='red' if enabled else 'lightgrey', fontsize=codefontsize))
@@ -1023,6 +1139,7 @@ class CodeRepresentation(QWidget):
 
 class CodesLayoutViewWidget(QWidget):
     
+    feedbackSignal = pyqtSignal()
     changeLayoutSignal = pyqtSignal()
     hideSignal = pyqtSignal()
     showSignal = pyqtSignal()
@@ -1035,8 +1152,23 @@ class CodesLayoutViewWidget(QWidget):
         else:
             codeslayoutview = None
     
+    def onFeedback (self):
+        for keyname in ("ALT", "SHIFT", "CTRL"):
+            coderep = self.keystroke_crs_map.get(keyname, None)
+            if coderep is not None:
+                coderep.toggled = getKeyStrokeState(keyname)['down']
+                coderep.updateView()
+        coderep = self.keystroke_crs_map.get("CAPSLOCK", None)
+        if coderep is not None:
+            key = coderep.item['_action'].key
+            #state = unpack("H", pack("h", win32api.GetAsyncKeyState(key.keywin32)))[0]
+            coderep.toggled = getKeyStrokeState("CAPSLOCK")["locked"]# (state & 1) == 1
+            coderep.updateView()
+         
+    
     def __init__(self, layout):
         super(CodesLayoutViewWidget, self).__init__()
+        self.feedbackSignal.connect(self.onFeedback)
         self.changeLayoutSignal.connect(self.changeLayout)
         self.hideSignal.connect(self.hide)
         self.showSignal.connect(self.show)
@@ -1045,6 +1177,7 @@ class CodesLayoutViewWidget(QWidget):
         hlayout = QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
         self.vlayout.addLayout(hlayout)
+        self.keystroke_crs_map = {}
         self.crs = {}
         x = 0
         perrow = layout['column_len']
@@ -1052,9 +1185,12 @@ class CodesLayoutViewWidget(QWidget):
             x += 1
             item = layout['items'][code]
             if item.get('emptyspace', False) == False:
-                self.crs[code] = CodeRepresentation(None, code, layout['items'][code], "Green")
+                coderep = CodeRepresentation(None, code, item, "Green")
+                if isinstance(item['_action'], ActionKeyStroke):
+                    self.keystroke_crs_map[item['_action'].key.name] = coderep
                 #self.setStyleSheet("background: %s " % "green")
-                hlayout.addWidget(self.crs[code])
+                self.crs[code] = coderep
+                hlayout.addWidget(coderep)
             if (x > perrow):
                 x = 0
                 hlayout = QHBoxLayout()
@@ -1063,7 +1199,14 @@ class CodesLayoutViewWidget(QWidget):
         self.setLayout(self.vlayout)
         self.vlayout.setContentsMargins(0, 0, 0, 0)
         self.show()
-        self.move(0, 0)
+        self.onFeedback()
+        ssize = app.desktop().screenGeometry()
+        size = self.frameSize()
+        x = int(myConfig['winposx']) if myConfig['winxaxis'] == 'left' else\
+            ssize.width() - size.width() - int(myConfig['winposx'])
+        y = int(myConfig['winposy']) if myConfig['winyaxis'] == 'top' else\
+            ssize.height() - size.height() - int(myConfig['winposy'])
+        self.move(x, y)
     
     def Dit(self):
         for item in self.crs.values():
