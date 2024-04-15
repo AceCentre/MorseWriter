@@ -103,6 +103,13 @@ class LayoutManager:
             else:
                 item['_action'] = None
         return OrderedDict((a['code'], a) for a in layout['items'])
+    
+    def set_active(self, layout):
+        """Sets the active layout."""
+        if layout in self.layouts:
+            self.active = self.layouts[layout]
+        else:
+            raise ValueError("Layout not found: " + layout)
 
 
 def moveMouse(x_delta, y_delta):
