@@ -1042,21 +1042,24 @@ if __name__ == '__main__':
     layoutmanager = LayoutManager(os.path.join(os.path.dirname(os.path.realpath(__file__)), "layouts.json"), actions)
     if layoutmanager.active is None:
         raise AssertionError("layouts.json has no mainlayout")
-    app = QApplication(sys.argv)
-
-    if not QSystemTrayIcon.isSystemTrayAvailable():
-        QMessageBox.critical(None, "MorseWriter", "I couldn't detect any system tray on this system.")
-        sys.exit(1)
-
-    QApplication.setQuitOnLastWindowClosed(False)
-
-    window = Window()
-    #code = CodeRepresentation(window, "A", "233232")
-    #code.disable()
-    #code.tickDitDah()
-    #code.tickDitDah()
-    if myConfig.get("autostart", False):
-        window.start(myConfig)
-    else:
-        window.show()
-    sys.exit(app.exec_())
+    try:
+        app = QApplication(sys.argv)
+    
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            QMessageBox.critical(None, "MorseWriter", "I couldn't detect any system tray on this system.")
+            sys.exit(1)
+    
+        QApplication.setQuitOnLastWindowClosed(False)
+    
+        window = Window()
+        #code = CodeRepresentation(window, "A", "233232")
+        #code.disable()
+        #code.tickDitDah()
+        #code.tickDitDah()
+        if myConfig.get("autostart", False):
+            window.start(myConfig)
+        else:
+            window.show()
+        sys.exit(app.exec_())
+    except Exception as e:
+        print("Error:", str(e))
