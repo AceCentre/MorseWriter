@@ -80,7 +80,8 @@ class TypeState (pressagio.callback.Callback):
         self.predictions = None
     def getpredictions (self):
         if self.predictions == None:
-            self.predictions = self.prsgio.predict()
+            self.predictions = self.presage.predict()
+
 
         return self.predictions
 
@@ -91,18 +92,22 @@ class LayoutManager:
             data = json.load(f)
         self.layouts = {k: self._layout_import(v) for k, v in data['layouts'].items()}
         self.active = self.layouts.get(data['mainlayout'], None)
+        if self.active is None:
+            raise ValueError("No main layout found or the specified main layout is not defined in layouts.json.")
         self.mainlayout = self.active
         self.mainlayoutname = data['mainlayout']
 
     def _layout_import(self, layout):
+        if 'column_len' not in layout:
+            raise KeyError("The layout is missing 'column_len' which is required for processing.")
         for item in layout['items']:
             action_name = item.get('action')
             if action_name in self.actions:
                 action_class, *args = self.actions[action_name]
-                item['_action'] = action_class(item, *args)  # Correct args based on action class constructor
+                item['_action'] = action_class(item, *args)  # Ensure correct arguments are passed
             else:
                 item['_action'] = None
-        return OrderedDict((a['code'], a) for a in layout['items'])
+        return layout
     
     def set_active(self, layout):
         """Sets the active layout."""
@@ -338,41 +343,36 @@ class ChangeLayoutAction (Action):
         layoutmanager.set_active(layoutmanager.layouts[self.item['target']])
         codeslayoutview.changeLayoutSignal.emit()
 
-class PredictionSelectLayoutAction (Action):
-    def __init__(self, item, *args):
-        pass  # handle initialization here; `args` can be ignored if not needed
+class PredictionSelectLayoutAction(Action):
+    def __init__(self, item):
+        super().__init__(item) 
 
-    def getlabel (self):
-        if typestate != None:
+    def getlabel(self):
+        if typestate is not None:
             target = self.item['target']
             predictions = typestate.getpredictions()
             if target >= 0 and target < len(predictions):
                 return predictions[target]
         return ""
-    def perform (self):
-        if typestate != None:
+
+    def perform(self):
+        if typestate is not None:
             target = self.item['target']
             predictions = typestate.getpredictions()
             if target >= 0 and target < len(predictions):
                 pred = predictions[target]
-                plen = len(pred)
-                print("PRED", predictions)
-                if plen > 0:
-                    stripsuffix = ""
-                    for i in range(plen):
-                        idx = len(typestate.text) - i
-                        if idx == 0 or (idx > 0 and typestate.text[idx - 1] in [" ", "\n", "\t", "\r"]):
-                            stripsuffix = typestate.text[idx:]
-                            break
-                    newchars = pred[len(stripsuffix):] + " "
-                    typestate.text = typestate.text[:len(typestate.text)-len(stripsuffix)] + newchars
-                    for char in newchars:
-                        keys = tuple(filter(lambda a: a.character == char, keystrokes))
-                        if len(keys) == 0:
-                            break
-                        if ord(keys[0].character) == 8 and len(typestate.text) == 0: # special case
-                            continue
-                        TypeKey(keys[0].keywin32)
+                stripsuffix = ""
+                for i in range(len(pred)):
+                    idx = len(typestate.text) - i
+                    if idx == 0 or (idx > 0 and typestate.text[idx - 1] in [" ", "\n", "\t", "\r"]):
+                        stripsuffix = typestate.text[idx:]
+                        break
+                newchars = pred[len(stripsuffix):] + " "
+                typestate.text = typestate.text[:len(typestate.text)-len(stripsuffix)] + newchars
+                for char in newchars:
+                    # Use pynput to type characters instead of win32api
+                    keyboard_controller.type(char)  # This handles normal characters
+
                         
 
 def initActions():
@@ -978,17 +978,15 @@ class CodesLayoutViewWidget(QWidget):
         self.crs = {}
         x = 0
         perrow = layout['column_len']
-        for code in layout['items']:
-            x += 1
-            item = layout['items'][code]
-            if item.get('emptyspace', False) == False:
-                coderep = CodeRepresentation(None, code, item, "Green")
+        for item in layout['items']:
+            if 'emptyspace' not in item or not item['emptyspace']:
+                coderep = CodeRepresentation(None, item['code'], item, "Green")
                 if isinstance(item['_action'], ActionKeyStroke):
                     self.keystroke_crs_map[item['_action'].key.name] = coderep
-                #self.setStyleSheet("background: %s " % "green")
-                self.crs[code] = coderep
+                self.crs[item['code']] = coderep
                 hlayout.addWidget(coderep)
-            if (x > perrow):
+            x += 1
+            if x > perrow:
                 x = 0
                 hlayout = QHBoxLayout()
                 hlayout.setContentsMargins(0, 0, 0, 0)
