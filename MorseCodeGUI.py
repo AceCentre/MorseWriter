@@ -20,6 +20,8 @@ import configparser
 import pressagio.callback
 import pressagio
 from enum import Enum
+from collections import OrderedDict
+
 
 from nava import play
 
@@ -95,16 +97,13 @@ class LayoutManager:
     def _layout_import(self, layout):
         for item in layout['items']:
             action_name = item.get('action')
-            if action_name and action_name in self.actions:
-                action_class = self.actions[action_name][0]
-                args = self.actions[action_name][1:]
-                item['_action'] = action_class(item, *args)
+            if action_name in self.actions:
+                action_class, *args = self.actions[action_name]
+                item['_action'] = action_class(item, *args)  # Correct args based on action class constructor
             else:
                 item['_action'] = None
         return OrderedDict((a['code'], a) for a in layout['items'])
 
-    def set_active(self, layout):
-        self.active = layout
 
 def moveMouse(x_delta, y_delta):
     current_pos = mouse_controller.position
@@ -234,14 +233,15 @@ class Action (object):
         pass
 
 
+
 class ActionLegacy (Action):
 
-    def __init__(self, item, key, label):
-        super(ActionLegacy, self).__init__()
-        self.item = item
-        self.key = key
+    def __init__(self, item, arg, label):
+        super(ActionLegacy, self).__init__(item)  # Pass required parameters
+        # Additional initialization for ActionLegacy
+        self.arg = arg
         self.label = label
-        
+            
     def getlabel (self):
         return self.label
         
@@ -502,9 +502,10 @@ def initActions():
         "MOUSEDOWNRIGHT250": ('ms rightdown 250', None, None, 3)
     }
 
-
+    keystrokes = []
     action_counter = 0
     for name, (label, key_code, character, extra) in key_data.items():
+        keystrokes.append(KeyStroke(name, label, key_code, character))
         actions[name] = (ActionLegacy, None, label)  # Adjust accordingly
         action_counter += 1
 
@@ -512,9 +513,10 @@ def initActions():
         "CHANGELAYOUT": (ChangeLayoutAction,),
         "PREDICTION_SELECT": (PredictionSelectLayoutAction,)
     })
+    keystrokemap = {stroke.name: stroke for stroke in keystrokes}
 
     # Optionally create an Enum for just referencing names
-    ActionsEnum = Enum('Actions', {name: i for i, name in enumerate(actions.keys())})
+    #ActionsEnum = Enum('Actions', {name: i for i, name in enumerate(actions.keys())})
 
 
 
