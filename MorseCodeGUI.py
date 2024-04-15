@@ -526,7 +526,7 @@ def initActions():
 
 def Init():
     global MyEvents, currentCharacter, hm, repeaton, repeatkey, codeslayoutview, typestate
-    MyEvents = enum('DITDAH', DIT=1, DAH=2)
+    MyEvents = Enum('DITDAH', [('DIT', 1), ('DAH', 2)])
     currentCharacter = []
     repeaton = False 
     repeatkey = None
