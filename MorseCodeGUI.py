@@ -29,7 +29,7 @@ from nava import play
 lastkeydowntime = -1
 
 
-pressagioconfig_file= os.path.join(os.path.dirname(os.path.realpath(__file__)), "morsewriter_pressagio.ini")
+pressagioconfig_file= os.path.join(os.path.dirname(os.path.realpath(__file__)), "res","morsewriter_pressagio.ini")
 pressagioconfig = configparser.ConfigParser()
 pressagioconfig.read(pressagioconfig_file)
 
@@ -209,14 +209,14 @@ def addDit():
     currentCharacter.append(MyEvents.DIT.value)
     if (myConfig['withsound']):
         # Original: winsound.Beep(int(myConfig['SoundDitFrequency']), int(myConfig['SoundDitDuration']))
-        play("dit_sound.wav")  # assuming you have a 'dit_sound.wav' file
+        play("res/dit_sound.wav")  # assuming you have a 'dit_sound.wav' file
     codeslayoutview.Dit()
 
 def addDah():
     currentCharacter.append(MyEvents.DAH.value)
     if (myConfig['withsound']):
         # Original: winsound.Beep(int(myConfig['SoundDahFrequency']), int(myConfig['SoundDahDuration']))
-        play("dah_sound.wav")  # assuming you have a 'dah_sound.wav' file
+        play("res/dah_sound.wav")  # assuming you have a 'dah_sound.wav' file
     codeslayoutview.Dah()
     
 def getPossibleCombos(currentCharacter):
@@ -749,14 +749,14 @@ class Window(QDialog):
         inputSettingsLayout.addLayout(viewSettingSec)
 
         self.iconComboBoxSoundDit = self.mkKeyStrokeComboBox([
-                ["Dit Sound", "dit_sound.wav"],  # Ensure the path is correct
-                ["Default", "dit_sound.wav"]  # Optional: default sound path
-            ], myConfig.get('SoundDit', "dit_sound.wav"))
+                ["Dit Sound", "res/dit_sound.wav"],  # Ensure the path is correct
+                ["Default", "res/dit_sound.wav"]  # Optional: default sound path
+            ], myConfig.get('SoundDit', "res/dit_sound.wav"))
         
         self.iconComboBoxSoundDah = self.mkKeyStrokeComboBox([
-            ["Dah Sound", "dah_sound.wav"],  # Ensure the path is correct
-            ["Default", "dah_sound.wav"]  # Optional: default sound path
-        ], myConfig.get('SoundDah', "dah_sound.wav"))
+            ["Dah Sound", "res/dah_sound.wav"],  # Ensure the path is correct
+            ["Default", "res/dah_sound.wav"]  # Optional: default sound path
+        ], myConfig.get('SoundDah', "res/dah_sound.wav"))
 
         DitSoundLabel = QLabel("Dit sound: ")
         DahSoundLabel = QLabel("Dah sound: ")
