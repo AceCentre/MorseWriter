@@ -12,9 +12,6 @@ import json
 import os
 from presagectypes import Presage, PresageCallback
 
-import os
-from presagectypes import Presage, PresageCallback
-
 lastkeydowntime = -1
 
 presageconfig = os.path.join(os.path.dirname(os.path.realpath(__file__)), "res", "presage.xml")
@@ -519,7 +516,8 @@ def Init():
     currentCharacter = []
     repeaton = False 
     repeatkey = None
-    layoutmanager.set_active(layoutmanager.mainlayout)    # special case for `typing` target
+    layoutmanager.set_active(layoutmanager.mainlayout)
+    # special case for `typing` target
     if layoutmanager.mainlayoutname == 'typing':
         typestate = TypeState()
     else:
