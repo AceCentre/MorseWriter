@@ -84,23 +84,23 @@ class TypeState (pressagio.callback.Callback):
 
 class LayoutManager:
     def __init__(self, fn, actions):
-        self.actions = actions  # actions should be a dictionary
+        self.actions = actions
         with open(fn, "r") as f:
-            data = json.load(f)  # Simplified reading of JSON file
+            data = json.load(f)
         self.layouts = {k: self._layout_import(v) for k, v in data['layouts'].items()}
         self.active = self.layouts.get(data['mainlayout'], None)
         self.mainlayout = self.active
         self.mainlayoutname = data['mainlayout']
-        
+
     def _layout_import(self, layout):
         for item in layout['items']:
             action_name = item.get('action')
-            action_data = self.actions.get(action_name)
-            if action_data:
-                action_class, *args = action_data  # Assumes action_data is like (ActionClass, arg1, arg2)
+            if action_name and action_name in self.actions:
+                action_class = self.actions[action_name][0]
+                args = self.actions[action_name][1:]
                 item['_action'] = action_class(item, *args)
             else:
-                item['_action'] = None  # No action found for this item
+                item['_action'] = None
         return OrderedDict((a['code'], a) for a in layout['items'])
 
     def set_active(self, layout):
@@ -233,14 +233,19 @@ class Action (object):
     def perform (self):
         pass
 
+
 class ActionLegacy (Action):
-    def __init__(self, item, label):
+
+    def __init__(self, item, key, label):
+        super(ActionLegacy, self).__init__()
         self.item = item
+        self.key = key
         self.label = label
         
     def getlabel (self):
         return self.label
         
+
     def perform(self):
         action_map = {
             'MOUSEUP5': lambda: moveMouse(0, -5),
@@ -511,26 +516,6 @@ def initActions():
     # Optionally create an Enum for just referencing names
     ActionsEnum = Enum('Actions', {name: i for i, name in enumerate(actions.keys())})
 
-    # Create keystrokes and map actions in one go
-    keystrokes = []
-    actionskwargs = {}
-    for name, (label, key_code, character, extra) in key_data.items():
-        # Determine if the key is a character key or a special key
-        pynput_key = key_code if isinstance(key_code, KeyCode) else KeyCode.from_char(key_code)
-        keystrokes.append(KeyStroke(name, label, pynput_key, character))
-        actionskwargs[name] = (ActionLegacy, None, label)  # Assuming label is used here for simplicity
-
-    # Additional actions not tied directly to keystrokes
-    actionskwargs.update({
-        "CHANGELAYOUT": (ChangeLayoutAction,),
-        "PREDICTION_SELECT": (PredictionSelectLayoutAction,)
-    })
-
-    # Map keystrokes to their names for easy access
-    keystrokemap = {stroke.name: stroke for stroke in keystrokes}
-
-    # Use an enum for action names if necessary
-    actions = Enum('Actions', {name: i for i, name in enumerate(key_data.keys())})
 
 
 def Init():
