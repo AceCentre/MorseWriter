@@ -7,6 +7,7 @@ import sys
 import threading
 import icons_rc
 from pynput.keyboard import Controller as KeyboardController
+from pynput.keyboard import Listener
 from pynput.mouse import Controller as MouseController
 from pynput.keyboard import Key, KeyCode
 from PyQt5.QtCore import pyqtSignal, Qt
@@ -177,6 +178,19 @@ def disableKeyUpDown(event):
         return True
     return False
 
+def on_press(key):
+    try:
+        # handle key press
+        print(f'Key {key} pressed')
+    except AttributeError:
+        print(f'Special key {key} pressed')
+
+def on_release(key):
+    print(f'Key {key} released')
+    # Stop listener
+    if key == Key.esc:
+        return False
+        
 def on_release(key):
     global lastkeydowntime, MyEvents, currentCharacter, endCharacterTimer, hm, disabled
     try:
@@ -545,9 +559,8 @@ def Init():
     codeslayoutview = CodesLayoutViewWidget(layoutmanager.active)
 
 def Go():
-    listener = keyboard.Listener(on_press=on_press, on_release=on_release)
-    listener.start()
-    listener.join()
+    with Listener(on_press=on_press, on_release=on_release) as listener:
+        listener.join()
 
 
 class Window(QDialog):
