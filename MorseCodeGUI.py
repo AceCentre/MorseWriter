@@ -1,28 +1,30 @@
 import sys
 import threading
-import icons_rc
-from pynput.keyboard import Controller as KeyboardController
-from pynput.keyboard import Listener
-from pynput.mouse import Controller as MouseController
-from pynput.keyboard import Key, KeyCode
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QVBoxLayout, QDialog, QWidget, QApplication, QSystemTrayIcon, QGroupBox, QRadioButton, \
-  QMessageBox, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QLineEdit, QGridLayout, QCheckBox, QPushButton, QAction, \
-  QMenu
-import json
 import os
+import json
 import configparser
-import pressagio.callback
-import pressagio
 from enum import Enum
 from collections import OrderedDict
 
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import (QVBoxLayout, QDialog, QWidget, QApplication,
+                             QSystemTrayIcon, QGroupBox, QRadioButton,
+                             QMessageBox, QHBoxLayout, QComboBox, QLabel,
+                             QLineEdit, QGridLayout, QCheckBox, QPushButton,
+                             QAction, QMenu)
 
-from nava import play
+from pynput.keyboard import Controller as KeyboardController, Listener, Key, KeyCode
+from pynput.mouse import Controller as MouseController
+
+import pressagio.callback
+import pressagio
+from nava import play 
+
+# Local imports
+import icons_rc  
 
 lastkeydowntime = -1
-
 
 pressagioconfig_file= os.path.join(os.path.dirname(os.path.realpath(__file__)), "res","morsewriter_pressagio.ini")
 pressagioconfig = configparser.ConfigParser()
@@ -108,9 +110,6 @@ class LayoutManager:
     def set_active(self, layout):
         """Sets the active layout."""
         self.active = layout
-
-
-
 
 def moveMouse(x_delta, y_delta):
     current_pos = mouse_controller.position
