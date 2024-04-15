@@ -67,7 +67,7 @@ class TypeState (pressagio.callback.Callback):
     def __init__ (self):
         self.text = ""
         self.predictions = None
-        self.presage = pressagio.Pressagio(self, config)
+        self.presage = pressagio.Pressagio(self, pressagioconfig)
     def past_stream (self):
         return self.text
     def future_stream (self):
@@ -106,10 +106,9 @@ class LayoutManager:
     
     def set_active(self, layout):
         """Sets the active layout."""
-        if layout in self.layouts:
-            self.active = self.layouts[layout]
-        else:
-            raise ValueError("Layout not found: " + layout)
+        self.active = layout
+
+
 
 
 def moveMouse(x_delta, y_delta):
