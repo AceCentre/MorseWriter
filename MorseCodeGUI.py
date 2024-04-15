@@ -10,12 +10,14 @@ import icons_rc
 from pynput import keyboard
 import json
 import os
-from presagectypes import Presage, PresageCallback
-
+import pressagio.callback
+import pressagio
+from nava import play
 lastkeydowntime = -1
 
-presageconfig = os.path.join(os.path.dirname(os.path.realpath(__file__)), "res", "presage.xml")
-presagedll = os.path.join(os.path.dirname(os.path.realpath(__file__)), "libpresage-1.dll")
+pressagioconfig_file= os.path.join(SCRIPT_DIR, "morsewriter_pressagio.ini")
+pressagioconfig = configparser.ConfigParser()
+pressagioconfig.read(pressagioconfig_file)
 
 keystrokes_state = {}
 disabled = False
@@ -33,11 +35,23 @@ hm = None
 
 configfile = os.path.join(os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.json"))
 
+class PressagioCallback(pressagio.callback.Callback):
+    def __init__(self, buffer):
+        super().__init__()
+        self.buffer = buffer
+
+    def past_stream(self):
+        return self.buffer
+
+    def future_stream(self):
+        return ""
+
+
 class TypeState (PresageCallback):
     def __init__ (self):
         self.text = ""
         self.predictions = None
-        self.presage = Presage(self, config=presageconfig, dllfile=presagedll)
+        self.presage = pressagio.Pressagio(self, config)
     def past_stream (self):
         return self.text
     def future_stream (self):
@@ -50,7 +64,8 @@ class TypeState (PresageCallback):
         self.predictions = None
     def getpredictions (self):
         if self.predictions == None:
-            self.predictions = self.presage.predict()
+            self.predictions = self.prsgio.predict()
+
         return self.predictions
 
 class LayoutManager (object):
