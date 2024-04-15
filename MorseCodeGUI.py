@@ -1,8 +1,3 @@
-#!/usr/bin/env pythone
-
-# This is only needed for Python v2 but is harmless for Python v3.
-#import sip
-#sip.setapi('QVariant', 1)
 import sys
 import threading
 import icons_rc
