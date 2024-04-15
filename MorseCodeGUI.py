@@ -8,7 +8,7 @@ import threading
 import icons_rc
 from pynput.keyboard import Controller as KeyboardController
 from pynput.mouse import Controller as MouseController
-from pynput.keyboard import Key
+from pynput.keyboard import Key, KeyCode
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QVBoxLayout, QDialog, QWidget, QApplication, QSystemTrayIcon, QGroupBox, QRadioButton, \
@@ -19,6 +19,8 @@ import os
 import configparser
 import pressagio.callback
 import pressagio
+from enum import Enum
+
 from nava import play
 
 lastkeydowntime = -1
@@ -80,28 +82,28 @@ class TypeState (pressagio.callback.Callback):
 
         return self.predictions
 
-class LayoutManager (object):
-    def __init__ (self, fn, actions):
-        self.actions = actions
-        data_str = ""
+class LayoutManager:
+    def __init__(self, fn, actions):
+        self.actions = actions  # actions should be a dictionary
         with open(fn, "r") as f:
-            data = json.loads("".join(chunk for chunk in iter(f.read, '')))
-            self.layouts = dict(map(lambda a:(a[0],self._layout_import(a[1])), data['layouts'].items()))
-            self.active = self.layouts.get(data['mainlayout'], None)
-            self.mainlayout = self.active
-            self.mainlayoutname = data['mainlayout']
-            
-    def _layout_import (self, layout):
-        for item in layout['items']:
-            actioninitdata =  self.actions.__members__.get(item.get('action', None), None)
-            action = None
-            if actioninitdata is not None:
-                action = actioninitdata.value[0](item, *actioninitdata.value[1:])
-            item['_action'] = action
-        layout['items'] = OrderedDict(map(lambda a: (a['code'], a), layout['items']))
-        return layout
+            data = json.load(f)  # Simplified reading of JSON file
+        self.layouts = {k: self._layout_import(v) for k, v in data['layouts'].items()}
+        self.active = self.layouts.get(data['mainlayout'], None)
+        self.mainlayout = self.active
+        self.mainlayoutname = data['mainlayout']
         
-    def set_active (self, layout):
+    def _layout_import(self, layout):
+        for item in layout['items']:
+            action_name = item.get('action')
+            action_data = self.actions.get(action_name)
+            if action_data:
+                action_class, *args = action_data  # Assumes action_data is like (ActionClass, arg1, arg2)
+                item['_action'] = action_class(item, *args)
+            else:
+                item['_action'] = None  # No action found for this item
+        return OrderedDict((a['code'], a) for a in layout['items'])
+
+    def set_active(self, layout):
         self.active = layout
 
 def moveMouse(x_delta, y_delta):
@@ -232,12 +234,13 @@ class Action (object):
         pass
 
 class ActionLegacy (Action):
-    def __init__ (self, item, key, label):
-        super(ActionLegacy, self).__init__(item)
-        self.key = key
+    def __init__(self, item, label):
+        self.item = item
         self.label = label
+        
     def getlabel (self):
         return self.label
+        
     def perform(self):
         action_map = {
             'MOUSEUP5': lambda: moveMouse(0, -5),
@@ -288,10 +291,10 @@ class ActionLegacy (Action):
             repeaton = True
 
 class KeyStroke (object):
-    def __init__ (self, name, label, keywin32, character):
+     def __init__(self, name, label, key, character):
         self.name = name
         self.label = label
-        self.keywin32 = keywin32
+        self.key = key
         self.character = character
         
 class ActionKeyStroke(Action):
@@ -325,6 +328,9 @@ class ChangeLayoutAction (Action):
         codeslayoutview.changeLayoutSignal.emit()
 
 class PredictionSelectLayoutAction (Action):
+    def __init__(self, item, *args):
+        pass  # handle initialization here; `args` can be ignored if not needed
+
     def getlabel (self):
         if typestate != None:
             target = self.item['target']
@@ -356,119 +362,176 @@ class PredictionSelectLayoutAction (Action):
                         if ord(keys[0].character) == 8 and len(typestate.text) == 0: # special case
                             continue
                         TypeKey(keys[0].keywin32)
-    
+                        
+
 def initActions():
     global actions, keystrokes, keystrokemap
-    keystrokesdata = list(map(lambda a: (KeyStroke(*a[:4]), a[4:]), (
-        ("A", "a", win32api.VkKeyScan("a"), "a"), ("B", "b", win32api.VkKeyScan("b"), "b"), ("C", "c", win32api.VkKeyScan("c"), "c"), ("D", "d", win32api.VkKeyScan("d"), "d"), 
-        ("E", "e", win32api.VkKeyScan("e"), "e"), ("F", "f", win32api.VkKeyScan("f"), "f"), ("G", "g", win32api.VkKeyScan("g"), "g"), ("H", "h", win32api.VkKeyScan("h"), "h"), 
-        ("I", "i", win32api.VkKeyScan("i"), "i"), ("J", "j", win32api.VkKeyScan("j"), "j"), ("K", "k", win32api.VkKeyScan("k"), "k"), ("L", "l", win32api.VkKeyScan("l"), "l"), 
-        ("M", "m", win32api.VkKeyScan("m"), "m"), ("N", "n", win32api.VkKeyScan("n"), "n"), ("O", "o", win32api.VkKeyScan("o"), "o"), ("P", "p", win32api.VkKeyScan("p"), "p"), 
-        ("Q", "q", win32api.VkKeyScan("q"), "q"), ("R", "r", win32api.VkKeyScan("r"), "r"), ("S", "s", win32api.VkKeyScan("s"), "s"), ("T", "t", win32api.VkKeyScan("t"), "t"),
-        ("U", "u", win32api.VkKeyScan("u"), "u"), ("V", "v", win32api.VkKeyScan("v"), "v"), ("W", "w", win32api.VkKeyScan("w"), "w"), ("X", "x", win32api.VkKeyScan("x"), "x"), 
-        ("Y", "y", win32api.VkKeyScan("y"), "y"), ("Z", "z", win32api.VkKeyScan("z"), "z"), ("ONE", "1", win32api.VkKeyScan("1"), "1"), ("TWO", "2", win32api.VkKeyScan("2"), "2"), 
-        ("THREE", "3", win32api.VkKeyScan("3"), "3"), ("FOUR", "4", win32api.VkKeyScan("4"), "4"), ("FIVE", "5", win32api.VkKeyScan("5"), "5"), 
-        ("SIX", "6", win32api.VkKeyScan("6"), "6"), 
-        ("SEVEN", "7", win32api.VkKeyScan("7"), "7"), ("EIGHT", "8", win32api.VkKeyScan("8"), "8"), ("NINE", "9", win32api.VkKeyScan("9"), "9"), 
-        ("ZERO", "0", win32api.VkKeyScan("0"), "0"), ("DOT", ".", win32api.VkKeyScan("."), "."), ("COMMA", ",", win32api.VkKeyScan(","), ","), 
-        ("QUESTION", "?", win32api.VkKeyScan("?"), "?"), ("EXCLAMATION", "!", win32api.VkKeyScan("!"), "!"), ("COLON", ":", win32api.VkKeyScan(":"), ":"), 
-        ("SEMICOLON", ";", win32api.VkKeyScan(";"), ";"), ("AT", "@", win32api.VkKeyScan("@"), "@"), ("BASH", "#", win32api.VkKeyScan("#"), "#"),
-        ("DOLLAR", "$", win32api.VkKeyScan("$"), "$"), ("PERCENT", "%", win32api.VkKeyScan("%"), "%"), ("AMPERSAND", "&", win32api.VkKeyScan("&"), "&"), 
-        ("STAR", "*", win32con.VK_MULTIPLY, "*"), ("PLUS", "+", win32con.VK_ADD, "+"), ("MINUS", "-", win32con.VK_SUBTRACT, "-"), 
-        ("EQUALS", "=", win32api.VkKeyScan("="), "="), ("FSLASH", "/", win32api.VkKeyScan("/"), "/"), ("BSLASH", "\\", win32api.VkKeyScan("\\"), "\\"), 
-        ("SINGLEQUOTE", "\'", win32api.VkKeyScan("\'"), "\'"), ("DOUBLEQUOTE", "\"", win32api.VkKeyScan("\""), "\""), ("OPENBRACKET", "(", win32api.VkKeyScan("("), "("), 
-        ("CLOSEBRACKET", ")", win32api.VkKeyScan(")"), ")"), ("LESSTHAN", "<", win32api.VkKeyScan("<"), "<"), ("MORETHAN", ">", win32api.VkKeyScan(">"), ">"), 
-        ("CIRCONFLEX", "^", win32api.VkKeyScan("^"), "^"), ("ENTER", "ENTER", win32con.VK_RETURN, "\n"), ("SPACE", "space", win32con.VK_SPACE, " "),
-        ("BACKSPACE", "bckspc", win32con.VK_BACK, chr(8)), ("TAB", "tab", win32con.VK_TAB, "\t"), ("TABLEFT", "tab", win32con.VK_TAB, "\t"), 
-        ("UNDERSCORE", "_", win32api.VkKeyScan("_"), "_"), ("PAGEUP", "pageup", win32con.VK_PRIOR, None), ("PAGEDOWN", "pagedwn", win32con.VK_NEXT, None), 
-        ("LEFTARROW", "left", win32con.VK_LEFT, None), ("RIGHTARROW", "right", win32con.VK_RIGHT, "right"),
-        ("UPARROW", "up", win32con.VK_UP, "up"), ("DOWNARROW", "down", win32con.VK_DOWN, "down"), ("ESCAPE", "esc", win32con.VK_ESCAPE, "esc"), ("HOME", "home", win32con.VK_HOME, "home"), 
-        ("END", "end", win32con.VK_END, None), ("INSERT", "insert", win32con.VK_INSERT, None), ("DELETE", "del", win32con.VK_DELETE, None), 
-        ("STARTMENU", "start", win32con.VK_MENU, None), ("SHIFT", "shift", win32con.VK_SHIFT, None, True), ("ALT", "alt", win32con.VK_MENU, None, True),
-        ("CTRL", "ctrl", win32con.VK_CONTROL, None, True), ("WINDOWS", "win", win32con.VK_LWIN, None), ("APPKEY", "app", win32con.VK_LWIN, None), 
-        ("LCTRL", "left ctrl", win32con.VK_LCONTROL, None), ("RCTRL", "right ctrl", win32con.VK_RCONTROL, None),
-        ("LSHIFT", "left shift", win32con.VK_LSHIFT, None), ("RSHIFT", "right shift", win32con.VK_RSHIFT, None),
-        ("RALT", "right alt", win32con.VK_RMENU, None), ("LALT", "alt", win32con.VK_LMENU, None),
-        ("CAPSLOCK", "caps", win32con.VK_CAPITAL, None),
-        ("F1", "F1", win32con.VK_F1, None), ("F2", "F2", win32con.VK_F2, None), ("F3", "F3", win32con.VK_F3, None), ("F4", "F4", win32con.VK_F4, None), ("F5", "F5", win32con.VK_F5, None), 
-        ("F6", "F6", win32con.VK_F6, None), ("F7", "F7", win32con.VK_F7, None), ("F8", "F8", win32con.VK_F8, None), ("F9", "F9", win32con.VK_F9, None), ("F10", "F10", win32con.VK_F10, None),
-        ("F11", "F11", win32con.VK_F11, None), ("F12", "F12", win32con.VK_F12, None))))
-    keystrokes = list(map(lambda a: a[0], keystrokesdata))
-    keystrokemap = dict(map(lambda a: (a.name, a), keystrokes))
-    actionskwargs = dict(map(lambda a: (a[0], (ActionLegacy, a[1], a[2])),
-       (("REPEATMODE", 0, "repeat"), ("SOUND", 8, "snd"), ("CODESET", 9, "code"),
-        ("MOUSERIGHT5", 2, "ms right 5"),
-        ("MOUSEUP5", 3, "ms up 5"), ("MOUSECLICKLEFT", 4, "ms clkleft"), ("MOUSEDBLCLICKLEFT", 5, "ms dblclkleft"), 
-        ("MOUSECLKHLDLEFT", 6, "ms hldleft"), ("MOUSEUPLEFT5", 7, "ms leftup 5"), ("MOUSEDOWNLEFT5", 8, "ms leftdown 5"),
-        ("MOUSERELEASEHOLD", 9, "ms release"), ("MOUSELEFT5", 0, "ms left 5"), ("MOUSEDOWN5", 1, "ms down 5"), ("MOUSECLICKRIGHT", 2, "ms clkright"), 
-        ("MOUSEDBLCLICKRIGHT", 3, "ms dblclkright"), ("MOUSECLKHLDRIGHT", 4, "ms hldright"), ("MOUSEUPRIGHT5", 5, "ms rightup 5"), 
-        ("MOUSEDOWNRIGHT5", 6, "ms rightdown 5"), ("NORMALMODE", 7, "normal mode"), ("MOUSEUP40", 8, "ms up 40"), ("MOUSEUP250", 9, "ms up 250"), 
-        ("MOUSEDOWN40", 0, "ms down 40"), ("MOUSEDOWN250", 1, "ms down 250"), ("MOUSELEFT40", 2, "ms left 40"), ("MOUSELEFT250", 3, "ms left 250"), 
-        ("MOUSERIGHT40", 4, "ms right 40"), ("MOUSERIGHT250", 5, "ms right 250"), ("MOUSEUPLEFT40", 6, "ms leftup 40"), 
-        ("MOUSEUPLEFT250", 7, "ms leftup 250"), ("MOUSEDOWNLEFT40", 8, "ms leftdown 40"), ("MOUSEDOWNLEFT250", 9, "ms leftdown 250"), 
-        ("MOUSEUPRIGHT40", 0, "ms rightup 40"), ("MOUSEUPRIGHT250", 1, "ms rightup 250"), ("MOUSEDOWNRIGHT40", 2, "ms rightdown 40"),
-        ("MOUSEDOWNRIGHT250", 3, "ms rightdown 250"))
-    ))
-    actionskwargs.update(dict(
-        CHANGELAYOUT=(ChangeLayoutAction,), PREDICTION_SELECT=(PredictionSelectLayoutAction,)
-    ))
-    actionskwargs.update(dict(map(lambda a: (a[0].name, (ActionKeyStroke,) + a), keystrokesdata)))
-    actions = enum('Actions', **actionskwargs)
-    '''
-    normalmapping = OrderedDict([('12',actions.A), ('2111',actions.B), ('2121',actions.C), ('211',actions.D), ('1',actions.E), ('1121',actions.F), 
-                                 ('221',actions.G), ('1111',actions.H), ('11',actions.I), ('1222',actions.J), ('212',actions.K), ('1211',actions.L), 
-                                 ('22',actions.M), ('21',actions.N), ('222',actions.O), ('1221',actions.P), ('2212',actions.Q), ('121',actions.R), 
-                                 ('111',actions.S), ('2',actions.T), ('112',actions.U), ('1112',actions.V), ('122',actions.W), ('2112',actions.X), 
-                                 ('2122',actions.Y), ('2211',  actions.Z), ('12222',actions.ONE), ('11222',actions.TWO), ('11122',actions.THREE), 
-                                 ('11112',actions.FOUR), ('11111',actions.FIVE), ('21111',actions.SIX), ('22111',actions.SEVEN), ('22211',actions.EIGHT), 
-                                 ('22221',actions.NINE), ('22222',actions.ZERO), ('121212',actions.DOT), ('221122',actions.COMMA), 
-                                 ('112211',actions.QUESTION), ('121122',actions.EXCLAMATION), ('212121',actions.COLON), ('11121',actions.SEMICOLON), 
-                                 ('12221',actions.AT), ('21222',actions.BASH), ('211121',actions.DOLLAR), ('122121',actions.PERCENT), 
-                                 ('21122',actions.AMPERSAND), ('12111',actions.STAR), ('12211',actions.PLUS), ('2221',actions.MINUS), 
-                                 ('12212',actions.EQUALS), ('22112',actions.FSLASH), ('211111',actions.BSLASH), ('121221',actions.SINGLEQUOTE), 
-                                 ('22122',actions.DOUBLEQUOTE), ('111221',actions.OPENBRACKET), ('211221',actions.CLOSEBRACKET), 
-                                 ('121112',actions.LESSTHAN), ('221121',actions.MORETHAN), ('212112',actions.CIRCONFLEX), ('1212',actions.ENTER), 
-                                 ('1122',actions.SPACE), ('2222',actions.BACKSPACE), ('21221',actions.TAB), ('221211',actions.TABLEFT), 
-                                 ('11221',actions.UNDERSCORE), ('222112',actions.PAGEUP), ('222121',actions.PAGEDOWN), ('222212',actions.LEFTARROW), 
-                                 ('222221',actions.RIGHTARROW), ('222211',actions.UPARROW), ('222222',actions.DOWNARROW), ('11211',actions.ESCAPE), 
-                                 ('111121',actions.HOME), ('21211',actions.END), ('12112',actions.INSERT), ('21121',actions.DELETE), 
-                                 ('221111',actions.STARTMENU), ('11212',actions.SHIFT), ('12122',actions.ALT), ('21212',actions.CTRL), 
-                                 ('112122',actions.WINDOWS), ('211122',actions.APPKEY), ('112121',actions.CAPSLOCK), ('22121',actions.MOUSEMODE), 
-                                 ('21112',actions.NUMBERMODE), ('121121',actions.REPEATMODE), ('121211',actions.SOUND), ('22212',actions.CODESET), 
-                                 ('112222',actions.F1), ('111222',actions.F2), ('111122',actions.F3), ('111112',actions.F4), ('111111',actions.F5), 
-                                 ('121111',actions.F6), ('122111',actions.F7), ('122211',actions.F8), ('122221',actions.F9), ('122222',actions.F10),
-                                 ('212222',actions.F11), ('211222',actions.F12)])
-    mousemapping = OrderedDict([('1', actions.MOUSERIGHT5), ('21', actions.MOUSERIGHT40), ('121', actions.MOUSERIGHT250), 
-                                ('2', actions.MOUSELEFT5), ('22', actions.MOUSELEFT40), ('122', actions.MOUSELEFT250),
-                                ('11', actions.MOUSEUP5), ('111', actions.MOUSEUP40), ('211', actions.MOUSEUP250),
-                                ('12', actions.MOUSEDOWN5), ('112', actions.MOUSEDOWN40), ('212', actions.MOUSEDOWN250),
-                                ('221', actions.MOUSEUPRIGHT5), ('1121', actions.MOUSEUPRIGHT40), ('1221', actions.MOUSEUPRIGHT250),
-                                ('222', actions.MOUSEDOWNRIGHT5), ('1122', actions.MOUSEDOWNRIGHT40), ('1222', actions.MOUSEDOWNRIGHT250),
-                                ('1111', actions.MOUSEUPLEFT5), ('1211', actions.MOUSEUPLEFT40), ('2111', actions.MOUSEUPLEFT250),
-                                ('1112', actions.MOUSEDOWNLEFT5), ('1212', actions.MOUSEDOWNLEFT40), ('2112', actions.MOUSEDOWNLEFT250),
-                                ('2121',actions.MOUSECLICKLEFT), ('2122',actions.MOUSEDBLCLICKLEFT), 
-                                ('2211',actions.MOUSECLKHLDLEFT), ('2212',actions.MOUSERELEASEHOLD), ('2221',actions.MOUSECLICKRIGHT), 
-                                ('2222',actions.MOUSEDBLCLICKRIGHT), ('11111',actions.MOUSECLKHLDRIGHT), ('22121',actions.NORMALMODE)])
-    numbermapping = OrderedDict([('1',actions.ONE), ('2',actions.TWO), ('12',actions.THREE), ('11',actions.FOUR), ('21',actions.FIVE), ('22',actions.SIX), 
-                                 ('122',actions.SEVEN), ('112',actions.EIGHT), ('111',actions.NINE), ('211',actions.ZERO), ('221',actions.PLUS), 
-                                 ('222',actions.MINUS), ('212',actions.FSLASH), ('121',actions.STAR), ('1212',actions.ENTER), ('121212',actions.DOT)])
-    
-    aitems = list(actions)
-    def aname (map, key):
-        return map[key].name
-    maps = {}
-    maps["main"] = {
-        "items": list("{{ \"code\": \"{}\", \"action\": \"{}\" }}".format(key, aname(normalmapping, key)) for key in normalmapping)
+    # List of key definitions: (Key name, label, pynput key, character (if any)
+    actions = {}
+    key_data = {
+        "A": ('a', KeyCode.from_char('a'), 'a', None),
+        "B": ('b', KeyCode.from_char('b'), 'b', None),
+        "C": ('c', KeyCode.from_char('c'), 'c', None),
+        "D": ('d', KeyCode.from_char('d'), 'd', None),
+        "E": ('e', KeyCode.from_char('e'), 'e', None),
+        "F": ('f', KeyCode.from_char('f'), 'f', None),
+        "G": ('g', KeyCode.from_char('g'), 'g', None),
+        "H": ('h', KeyCode.from_char('h'), 'h', None),
+        "I": ('i', KeyCode.from_char('i'), 'i', None),
+        "J": ('j', KeyCode.from_char('j'), 'j', None),
+        "K": ('k', KeyCode.from_char('k'), 'k', None),
+        "L": ('l', KeyCode.from_char('l'), 'l', None),
+        "M": ('m', KeyCode.from_char('m'), 'm', None),
+        "N": ('n', KeyCode.from_char('n'), 'n', None),
+        "O": ('o', KeyCode.from_char('o'), 'o', None),
+        "P": ('p', KeyCode.from_char('p'), 'p', None),
+        "Q": ('q', KeyCode.from_char('q'), 'q', None),
+        "R": ('r', KeyCode.from_char('r'), 'r', None),
+        "S": ('s', KeyCode.from_char('s'), 's', None),
+        "T": ('t', KeyCode.from_char('t'), 't', None),
+        "U": ('u', KeyCode.from_char('u'), 'u', None),
+        "V": ('v', KeyCode.from_char('v'), 'v', None),
+        "W": ('w', KeyCode.from_char('w'), 'w', None),
+        "X": ('x', KeyCode.from_char('x'), 'x', None),
+        "Y": ('y', KeyCode.from_char('y'), 'y', None),
+        "Z": ('z', KeyCode.from_char('z'), 'z', None),
+        "ONE": ('1', KeyCode.from_char('1'), '1', None),
+        "TWO": ('2', KeyCode.from_char('2'), '2', None),
+        "THREE": ('3', KeyCode.from_char('3'), '3', None),
+        "FOUR": ('4', KeyCode.from_char('4'), '4', None),
+        "FIVE": ('5', KeyCode.from_char('5'), '5', None),
+        "SIX": ('6', KeyCode.from_char('6'), '6', None),
+        "SEVEN": ('7', KeyCode.from_char('7'), '7', None),
+        "EIGHT": ('8', KeyCode.from_char('8'), '8', None),
+        "NINE": ('9', KeyCode.from_char('9'), '9', None),
+        "ZERO": ('0', KeyCode.from_char('0'), '0', None),
+        "DOT": ('.', KeyCode.from_char('.'), '.', None),
+        "COMMA": (',', KeyCode.from_char(','), ',', None),
+        "QUESTION": ('?', KeyCode.from_char('/'), '?', None),
+        "EXCLAMATION": ('!', KeyCode.from_char('1'), '!', None),
+        "COLON": (':', KeyCode.from_char(';'), ':', None),
+        "SEMICOLON": (';', KeyCode.from_char(';'), ';', None),
+        "AT": ('@', KeyCode.from_char('2'), '@', None),
+        "HASH": ('#', KeyCode.from_char('3'), '#', None),
+        "DOLLAR": ('$', KeyCode.from_char('4'), '$', None),
+        "PERCENT": ('%', KeyCode.from_char('5'), '%', None),
+        "AMPERSAND": ('&', KeyCode.from_char('7'), '&', None),
+        "STAR": ('*', KeyCode.from_char('*'), '*', None),
+        "PLUS": ('+', KeyCode.from_char('='), '+', None),
+        "MINUS": ('-', KeyCode.from_char('-'), '-', None),
+        "EQUALS": ('=', KeyCode.from_char('='), '=', None),
+        "FSLASH": ('/', KeyCode.from_char('/'), '/', None),
+        "BSLASH": ('\\', KeyCode.from_char('\\'), '\\', None),
+        "SINGLEQUOTE": ("'", KeyCode.from_char("'"), "'", None),
+        "DOUBLEQUOTE": ('"', KeyCode.from_char('"'), '"', None),
+        "OPENBRACKET": ('(', KeyCode.from_char('9'), '(', None),
+        "CLOSEBRACKET": (')', KeyCode.from_char('0'), ')', None),
+        "LESSTHAN": ('<', KeyCode.from_char(','), '<', None),
+        "MORETHAN": ('>', KeyCode.from_char('.'), '>', None),
+        "CIRCONFLEX": ('^', KeyCode.from_char('6'), '^', None),
+        "ENTER": ('ENTER', KeyCode.from_char('Key.enter'), '\n', None),
+        "SPACE": ('space', KeyCode.from_char('Key.space'), ' ', None),
+        "BACKSPACE": ('bckspc', KeyCode.from_char('Key.backspace'), '\x08', None),
+        "TAB": ('tab', KeyCode.from_char('Key.tab'), '\t', None),
+        "PAGEUP": ('pageup', KeyCode.from_char('Key.page_up'), None, None),
+        "PAGEDOWN": ('pagedwn', KeyCode.from_char('Key.page_down'), None, None),
+        "LEFTARROW": ('left', KeyCode.from_char('Key.left'), None, None),
+        "RIGHTARROW": ('right', KeyCode.from_char('Key.right'), None, None),
+        "UPARROW": ('up', KeyCode.from_char('Key.up'), None, None),
+        "DOWNARROW": ('down', KeyCode.from_char('Key.down'), None, None),
+        "ESCAPE": ('esc', KeyCode.from_char('Key.esc'), None, None),
+        "HOME": ('home', KeyCode.from_char('Key.home'), None, None),
+        "END": ('end', KeyCode.from_char('Key.end'), None, None),
+        "DELETE": ('del', KeyCode.from_char('Key.delete'), None, None),
+        "SHIFT": ('shift', KeyCode.from_char('Key.shift'), None, None),
+        "CTRL": ('ctrl', KeyCode.from_char('Key.ctrl'), None, None),
+        "ALT": ('alt', KeyCode.from_char('Key.alt'), None, None),
+        "WINDOWS": ('win', KeyCode.from_char('Key.cmd'), None, None),
+        "CAPSLOCK": ('caps', KeyCode.from_char('Key.caps_lock'), None, None),
+        "F1": ('F1', KeyCode.from_char('Key.f1'), None, None),
+        "F2": ('F2', KeyCode.from_char('Key.f2'), None, None),
+        "F3": ('F3', KeyCode.from_char('Key.f3'), None, None),
+        "F4": ('F4', KeyCode.from_char('Key.f4'), None, None),
+        "F5": ('F5', KeyCode.from_char('Key.f5'), None, None),
+        "F6": ('F6', KeyCode.from_char('Key.f6'), None, None),
+        "F7": ('F7', KeyCode.from_char('Key.f7'), None, None),
+        "F8": ('F8', KeyCode.from_char('Key.f8'), None, None),
+        "F9": ('F9', KeyCode.from_char('Key.f9'), None, None),
+        "F10": ('F10', KeyCode.from_char('Key.f10'), None, None),
+        "F11": ('F11', KeyCode.from_char('Key.f11'), None, None),
+        "F12": ('F12', KeyCode.from_char('Key.f12'), None, None),
+        "REPEATMODE": ('repeat', None, None, 0),
+        "SOUND": ('snd', None, None, 8),
+        "CODESET": ('code', None, None, 9),
+        "MOUSERIGHT5": ('ms right 5', None, None, 2),
+        "MOUSEUP5": ('ms up 5', None, None, 3),
+        "MOUSECLICKLEFT": ('ms clkleft', None, None, 4),
+        "MOUSEDBLCLICKLEFT": ('ms dblclkleft', None, None, 5),
+        "MOUSECLKHLDLEFT": ('ms hldleft', None, None, 6),
+        "MOUSEUPLEFT5": ('ms leftup 5', None, None, 7),
+        "MOUSEDOWNLEFT5": ('ms leftdown 5', None, None, 8),
+        "MOUSERELEASEHOLD": ('ms release', None, None, 9),
+        "MOUSELEFT5": ('ms left 5', None, None, 0),
+        "MOUSEDOWN5": ('ms down 5', None, None, 1),
+        "MOUSECLICKRIGHT": ('ms clkright', None, None, 2),
+        "MOUSEDBLCLICKRIGHT": ('ms dblclkright', None, None, 3),
+        "MOUSECLKHLDRIGHT": ('ms hldright', None, None, 4),
+        "MOUSEUPRIGHT5": ('ms rightup 5', None, None, 5),
+        "MOUSEDOWNRIGHT5": ('ms rightdown 5', None, None, 6),
+        "NORMALMODE": ('normal mode', None, None, 7),
+        "MOUSEUP40": ('ms up 40', None, None, 8),
+        "MOUSEUP250": ('ms up 250', None, None, 9),
+        "MOUSEDOWN40": ('ms down 40', None, None, 0),
+        "MOUSEDOWN250": ('ms down 250', None, None, 1),
+        "MOUSELEFT40": ('ms left 40', None, None, 2),
+        "MOUSELEFT250": ('ms left 250', None, None, 3),
+        "MOUSERIGHT40": ('ms right 40', None, None, 4),
+        "MOUSERIGHT250": ('ms right 250', None, None, 5),
+        "MOUSEUPLEFT40": ('ms leftup 40', None, None, 6),
+        "MOUSEUPLEFT250": ('ms leftup 250', None, None, 7),
+        "MOUSEDOWNLEFT40": ('ms leftdown 40', None, None, 8),
+        "MOUSEDOWNLEFT250": ('ms leftdown 250', None, None, 9),
+        "MOUSEUPRIGHT40": ('ms rightup 40', None, None, 0),
+        "MOUSEUPRIGHT250": ('ms rightup 250', None, None, 1),
+        "MOUSEDOWNRIGHT40": ('ms rightdown 40', None, None, 2),
+        "MOUSEDOWNRIGHT250": ('ms rightdown 250', None, None, 3)
     }
-    maps["mouse"] = {
-        "items": list("{{ \"code\": \"{}\", \"action\": \"{}\" }}".format(key, aname(mousemapping, key)) for key in mousemapping)
-    }
-    maps["number"] = {
-        "items": list("{{ \"code\": \"{}\", \"action\": \"{}\" }}".format(key, aname(numbermapping, key)) for key in numbermapping)
-    }
-    with open("codemaps.json", "w") as f:
-        f.write(json.dumps({ "maps": maps, "mainmap": "main" }, indent=2))
-    '''
+
+
+    action_counter = 0
+    for name, (label, key_code, character, extra) in key_data.items():
+        actions[name] = (ActionLegacy, None, label)  # Adjust accordingly
+        action_counter += 1
+
+    actions.update({
+        "CHANGELAYOUT": (ChangeLayoutAction,),
+        "PREDICTION_SELECT": (PredictionSelectLayoutAction,)
+    })
+
+    # Optionally create an Enum for just referencing names
+    ActionsEnum = Enum('Actions', {name: i for i, name in enumerate(actions.keys())})
+
+    # Create keystrokes and map actions in one go
+    keystrokes = []
+    actionskwargs = {}
+    for name, (label, key_code, character, extra) in key_data.items():
+        # Determine if the key is a character key or a special key
+        pynput_key = key_code if isinstance(key_code, KeyCode) else KeyCode.from_char(key_code)
+        keystrokes.append(KeyStroke(name, label, pynput_key, character))
+        actionskwargs[name] = (ActionLegacy, None, label)  # Assuming label is used here for simplicity
+
+    # Additional actions not tied directly to keystrokes
+    actionskwargs.update({
+        "CHANGELAYOUT": (ChangeLayoutAction,),
+        "PREDICTION_SELECT": (PredictionSelectLayoutAction,)
+    })
+
+    # Map keystrokes to their names for easy access
+    keystrokemap = {stroke.name: stroke for stroke in keystrokes}
+
+    # Use an enum for action names if necessary
+    actions = Enum('Actions', {name: i for i, name in enumerate(key_data.keys())})
+
 
 def Init():
     global MyEvents, currentCharacter, hm, repeaton, repeatkey, codeslayoutview, typestate
