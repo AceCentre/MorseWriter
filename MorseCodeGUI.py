@@ -6,7 +6,9 @@
 import sys
 import threading
 import icons_rc
-from pynput import keyboard
+from pynput.keyboard import Controller as KeyboardController
+from pynput.mouse import Controller as MouseController
+from pynput.keyboard import Key
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QVBoxLayout, QDialog, QWidget, QApplication, QSystemTrayIcon, QGroupBox, QRadioButton, \
@@ -18,7 +20,6 @@ import configparser
 import pressagio.callback
 import pressagio
 from nava import play
-from pynput.keyboard import Controller, Key
 
 lastkeydowntime = -1
 
@@ -26,6 +27,9 @@ lastkeydowntime = -1
 pressagioconfig_file= os.path.join(os.path.dirname(os.path.realpath(__file__)), "morsewriter_pressagio.ini")
 pressagioconfig = configparser.ConfigParser()
 pressagioconfig.read(pressagioconfig_file)
+
+mouse_controller = MouseController()
+keyboard_controller = KeyboardController()
 
 keystrokes_state = {}
 disabled = False
@@ -100,21 +104,44 @@ class LayoutManager (object):
     def set_active (self, layout):
         self.active = layout
 
+def moveMouse(x_delta, y_delta):
+    current_pos = mouse_controller.position
+    new_pos = (current_pos[0] + x_delta, current_pos[1] + y_delta)
+    mouse_controller.position = new_pos
+
+def clickMouse(button='left', action='click'):
+    from pynput.mouse import Button
+    btn = Button.left if button == 'left' else Button.right
+    if action == 'click':
+        mouse_controller.click(btn)
+    elif action == 'press':
+        mouse_controller.press(btn)
+    elif action == 'release':
+        mouse_controller.release(btn)
+
 
 def PressKey(down, key):
     global pressingKey
     pressingKey = True
     if myConfig['debug']:
-        print("presskey: ",key, "down" if down else "up")
-    # win32api.MAPVK_VK_TO_VSC = 0, one may need to pass this as second argument `win32api.MapVirtualKey(key, 0)`
-    win32api.keybd_event(key, win32api.MapVirtualKey(key, 0), (not down) * win32con.KEYEVENTF_KEYUP)
-    pressingKey = False
+        print("presskey: ", key, "down" if down else "up")
+    
+    try:
+        # Using pynput to press and release keys
+        if down:
+            keyboard_controller.press(key)
+        else:
+            keyboard_controller.release(key)
+    finally:
+        pressingKey = False
 
 def TypeKey(key, keystroke_time=10):
     PressKey(True, key)
+    # Delay between press and release
+    time.sleep(keystroke_time / 1000)  # Convert milliseconds to seconds
     PressKey(False, key)
     if myConfig['debug']:
-        print("typekey, ", key)
+        print("typekey: ", key)
 
 def endCharacter():
     if myConfig['debug']:
@@ -127,12 +154,9 @@ def endCharacter():
         print("action: ", action)
     if action is not None:
         action.perform()
-    # save cursor position for after each action, MOUSEMODE has been removed!!
-    currentX, currentY = win32api.GetCursorPos()
-    hm.KeyDown = OnKeyboardEventDown
-    hm.KeyUp = OnKeyboardEventUp
     currentCharacter = []
     codeslayoutview.reset()
+
 
 def disableKeyUpDown(event):
     if pressingKey:
@@ -144,18 +168,15 @@ def disableKeyUpDown(event):
 def on_release(key):
     global lastkeydowntime, MyEvents, currentCharacter, endCharacterTimer, hm, disabled
     try:
-        if key.char:
+        # Check if key has a char attribute
+        if hasattr(key, 'char') and key.char:
             key_char = key.char
         else:
+            # This covers cases like Key.space where key.char is None
             key_char = key.name
     except AttributeError:
-        key_char = key.name
-
-    # Your existing logic for handling key up events goes here
-    # You will need to adapt the logic from using PyHook3 to using the key information from pynput
-    # Example adaptation:
-    # if key_char == 'your_key_of_interest':
-    #     # Perform actions
+        # Fallback if neither char nor name is present (unlikely)
+        key_char = str(key)
 
 
 def addDit():
@@ -217,114 +238,54 @@ class ActionLegacy (Action):
         self.label = label
     def getlabel (self):
         return self.label
-    def perform (self):
-        global repeaton, repeatkey
-        key = self.key
-        if (key == actions.MOUSEUP5.value[1]):
-            currentY += -5
-            moveMouse()
-        elif (key == actions.MOUSEDOWN5.value[1]):
-            currentY += 5
-            moveMouse()
-        elif (key == actions.MOUSELEFT5.value[1]):
-            currentX += -5
-            moveMouse()
-        elif (key == actions.MOUSERIGHT5.value[1]):
-            currentX += 5
-            moveMouse()
-        elif (key == actions.MOUSEUPLEFT5.value[1]):
-            currentX += -5
-            currentY += -5
-            moveMouse()
-        elif (key == actions.MOUSEUPRIGHT5.value[1]):
-            currentX += 5
-            currentY += -5
-            moveMouse()
-        elif (key == actions.MOUSEDOWNLEFT5.value[1]):
-            currentX += -5
-            currentY += 5
-            moveMouse()
-        elif (key == actions.MOUSEDOWNRIGHT5.value[1]):
-            currentX += 5
-            currentY += 5
-            moveMouse()
-        elif (key == actions.MOUSEUP40.value[1]):
-            currentY += -40
-            moveMouse()
-        elif (key == actions.MOUSEDOWN40.value[1]):
-            currentY += 40
-            moveMouse()
-        elif (key == actions.MOUSELEFT40.value[1]):
-            currentX += -40
-            moveMouse()
-        elif (key == actions.MOUSERIGHT40.value[1]):
-            currentX += 40
-            moveMouse()
-        elif (key == actions.MOUSEUPLEFT40.value[1]):
-            currentX += -40
-            currentY += -40
-            moveMouse()
-        elif (key == actions.MOUSEUPRIGHT40.value[1]):
-            currentX += 40
-            currentY += -40
-            moveMouse()
-        elif (key == actions.MOUSEDOWNLEFT40.value[1]):
-            currentX += -40
-            currentY += 40
-            moveMouse()
-        elif (key == actions.MOUSEDOWNRIGHT40.value[1]):
-            currentX += 40
-            currentY += 40
-            moveMouse()
-        elif (key == actions.MOUSEUP250.value[1]):
-            currentY += -250
-            moveMouse()
-        elif (key == actions.MOUSEDOWN250.value[1]):
-            currentY += 250
-            moveMouse()
-        elif (key == actions.MOUSELEFT250.value[1]):
-            currentX += -250
-            moveMouse()
-        elif (key == actions.MOUSERIGHT250.value[1]):
-            currentX += 250
-            moveMouse()
-        elif (key == actions.MOUSEUPLEFT250.value[1]):
-            currentX += -250
-            currentY += -250
-            moveMouse()
-        elif (key == actions.MOUSEUPRIGHT250.value[1]):
-            currentX += 250
-            currentY += -250
-            moveMouse()
-        elif (key == actions.MOUSEDOWNLEFT250.value[1]):
-            currentX += -250
-            currentY += 250
-            moveMouse()
-        elif (key == actions.MOUSEDOWNRIGHT250.value[1]):
-            currentX += 250
-            currentY += 250
-            moveMouse()
-        elif (key == actions.MOUSECLICKLEFT.value[1]):
-            leftClickMouse()
-        elif (key == actions.MOUSECLICKRIGHT.value[1]):
-            rightClickMouse()
-        elif (key == actions.MOUSECLKHLDLEFT.value[1]):
-            leftMouseDown()
-        elif (key == actions.MOUSECLKHLDRIGHT.value[1]):
-            rightMouseDown()
-        elif (key == actions.MOUSERELEASEHOLD.value[1]):
-            releaseMouseDown()
-        elif (key == actions.REPEATMODE.value[1]):
-            if (repeaton == True):
-                if myConfig['debug']:
-                    print("repeat OFF")
-                    repeaton = False
-                    repeatkey = None
-                else:
-                    if myConfig['debug']:
-                        print("repeat ON")
-                    repeaton = True 
-
+    def perform(self):
+        action_map = {
+            'MOUSEUP5': lambda: moveMouse(0, -5),
+            'MOUSEDOWN5': lambda: moveMouse(0, 5),
+            'MOUSELEFT5': lambda: moveMouse(-5, 0),
+            'MOUSERIGHT5': lambda: moveMouse(5, 0),
+            'MOUSEUPLEFT5': lambda: moveMouse(-5, -5),
+            'MOUSEUPRIGHT5': lambda: moveMouse(5, -5),
+            'MOUSEDOWNLEFT5': lambda: moveMouse(-5, 5),
+            'MOUSEDOWNRIGHT5': lambda: moveMouse(5, 5),
+            'MOUSEUP40': lambda: moveMouse(0, -40),
+            'MOUSEDOWN40': lambda: moveMouse(0, 40),
+            'MOUSELEFT40': lambda: moveMouse(-40, 0),
+            'MOUSERIGHT40': lambda: moveMouse(40, 0),
+            'MOUSEUPLEFT40': lambda: moveMouse(-40, -40),
+            'MOUSEUPRIGHT40': lambda: moveMouse(40, -40),
+            'MOUSEDOWNLEFT40': lambda: moveMouse(-40, 40),
+            'MOUSEDOWNRIGHT40': lambda: moveMouse(40, 40),
+            'MOUSEUP250': lambda: moveMouse(0, -250),
+            'MOUSEDOWN250': lambda: moveMouse(0, 250),
+            'MOUSELEFT250': lambda: moveMouse(-250, 0),
+            'MOUSERIGHT250': lambda: moveMouse(250, 0),
+            'MOUSEUPLEFT250': lambda: moveMouse(-250, -250),
+            'MOUSEUPRIGHT250': lambda: moveMouse(250, -250),
+            'MOUSEDOWNLEFT250': lambda: moveMouse(-250, 250),
+            'MOUSEDOWNRIGHT250': lambda: moveMouse(250, 250),
+            'MOUSECLICKLEFT': lambda: clickMouse(Button.left, 'click'),
+            'MOUSECLICKRIGHT': lambda: clickMouse(Button.right, 'click'),
+            'MOUSECLKHLDLEFT': lambda: clickMouse(Button.left, 'press'),
+            'MOUSECLKHLDRIGHT': lambda: clickMouse(Button.right, 'press'),
+            'MOUSERELEASEHOLD': lambda: clickMouse(Button.left, 'release'), # Assumes left button for example
+            'REPEATMODE': self.handleRepeatMode
+        }
+    
+        # Execute the mapped function based on self.key if exists
+        if self.key in action_map:
+            action_map[self.key]()
+    
+    def handleRepeatMode(self):
+        global repeaton, myConfig
+        if repeaton:
+            if myConfig.get('debug', False):
+                print("repeat OFF")
+            repeaton = False
+        else:
+            if myConfig.get('debug', False):
+                print("repeat ON")
+            repeaton = True
 
 class KeyStroke (object):
     def __init__ (self, name, label, keywin32, character):
@@ -333,42 +294,22 @@ class KeyStroke (object):
         self.keywin32 = keywin32
         self.character = character
         
-class ActionKeyStroke (Action):
-    def __init__ (self, item, key, toggle_action=False):
+class ActionKeyStroke(Action):
+    def __init__(self, item, key, toggle_action=False):
         super(ActionKeyStroke, self).__init__(item)
-        self.key = key
-        self.toggle_action = toggle_action 
-    def getlabel (self):
-        return self.key.label
-    def perform (self):
-        key = self.key.keywin32
-        if self.toggle_action:
-            isdown = getKeyStrokeState(self.key.name)["down"]
-            if isdown:
-                PressKey(False, key)
-            else:
-                PressKey(True, key)
-        else:
-            if (repeaton):
-                if (repeatkey == None):
-                    repeatkey = key
-                else:
-                    if myConfig['debug']:
-                        print("repeat code: ", repeatkey, " + ", key)
-                    PressKey(True, repeatkey)
-                    TypeKey(key)
-                    PressKey(False, repeatkey)
-            else:
-                if myConfig['debug']:
-                    print("code found: ", key)
-                #win32api.VkKeyScan('1')
-                TypeKey(key)
-                if typestate != None:
-                    if self.key.name == "BACKSPACE":
-                        typestate.popchar()
-                    elif self.key.character != None:
-                        typestate.pushchar(self.key.character)
+        self.key = get_pynput_key(key)  # Ensure this is a pynput compatible key
+        self.toggle_action = toggle_action
 
+    def perform(self):
+        if self.toggle_action:
+            current_state = getKeyStrokeState(self.key)  # Define this function based on your app's logic
+            if current_state['down']:
+                keyboard_controller.release(self.key)
+            else:
+                keyboard_controller.press(self.key)
+        else:
+            keyboard_controller.press(self.key)
+            keyboard_controller.release(self.key)
 
 class ChangeLayoutAction (Action):
     def perform (self):
