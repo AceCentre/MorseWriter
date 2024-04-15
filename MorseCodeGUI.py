@@ -5,17 +5,25 @@
 #sip.setapi('QVariant', 1)
 import sys
 import threading
-import winsound
 import icons_rc
 from pynput import keyboard
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QVBoxLayout, QDialog, QWidget, QApplication, QSystemTrayIcon, QGroupBox, QRadioButton, \
+  QMessageBox, QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QLineEdit, QGridLayout, QCheckBox, QPushButton, QAction, \
+  QMenu
 import json
 import os
+import configparser
 import pressagio.callback
 import pressagio
 from nava import play
+from pynput.keyboard import Controller, Key
+
 lastkeydowntime = -1
 
-pressagioconfig_file= os.path.join(SCRIPT_DIR, "morsewriter_pressagio.ini")
+
+pressagioconfig_file= os.path.join(os.path.dirname(os.path.realpath(__file__)), "morsewriter_pressagio.ini")
 pressagioconfig = configparser.ConfigParser()
 pressagioconfig.read(pressagioconfig_file)
 
@@ -47,7 +55,7 @@ class PressagioCallback(pressagio.callback.Callback):
         return ""
 
 
-class TypeState (PresageCallback):
+class TypeState (pressagio.callback.Callback):
     def __init__ (self):
         self.text = ""
         self.predictions = None
@@ -153,21 +161,17 @@ def on_release(key):
 def addDit():
     currentCharacter.append(MyEvents.DIT.value)
     if (myConfig['withsound']):
-        #winsound.Beep(int(myConfig['SoundDitFrequency']), int(myConfig['SoundDitDuration']))
-        winsound.MessageBeep(myConfig.get('SoundDit', -1))
-        #winsound.Beep(440, 33)
-    #combos = getPossibleCombos(currentCharacter)
+        # Original: winsound.Beep(int(myConfig['SoundDitFrequency']), int(myConfig['SoundDitDuration']))
+        play("dit_sound.wav")  # assuming you have a 'dit_sound.wav' file
     codeslayoutview.Dit()
 
 def addDah():
     currentCharacter.append(MyEvents.DAH.value)
     if (myConfig['withsound']):
-        #winsound.Beep(int(myConfig['SoundDitFrequency']), int(myConfig['SoundDitDuration']))
-        winsound.MessageBeep(myConfig.get('SoundDah', -1))
-        #winsound.Beep(440, 100)
-    #combos = getPossibleCombos(currentCharacter)
+        # Original: winsound.Beep(int(myConfig['SoundDahFrequency']), int(myConfig['SoundDahDuration']))
+        play("dah_sound.wav")  # assuming you have a 'dah_sound.wav' file
     codeslayoutview.Dah()
-
+    
 def getPossibleCombos(currentCharacter):
     x = ""
     for i in currentCharacter:
@@ -731,22 +735,14 @@ class Window(QDialog):
         inputSettingsLayout.addLayout(viewSettingSec)
 
         self.iconComboBoxSoundDit = self.mkKeyStrokeComboBox([
-            ["MB_OK", winsound.MB_OK],
-            ["MB_ICONQUESTION", winsound.MB_ICONQUESTION],
-            ["MB_ICONHAND", winsound.MB_ICONHAND],
-            ["MB_ICONEXCLAMATION", winsound.MB_ICONEXCLAMATION],
-            ["MB_ICONASTERISK", winsound.MB_ICONASTERISK],
-            ["DEFAULT", -1],
-        ], myConfig.get('SoundDit', None))
-
+                ["Dit Sound", "dit_sound.wav"],  # Ensure the path is correct
+                ["Default", "dit_sound.wav"]  # Optional: default sound path
+            ], myConfig.get('SoundDit', "dit_sound.wav"))
+        
         self.iconComboBoxSoundDah = self.mkKeyStrokeComboBox([
-            ["MB_OK", winsound.MB_OK],
-            ["MB_ICONQUESTION", winsound.MB_ICONQUESTION],
-            ["MB_ICONHAND", winsound.MB_ICONHAND],
-            ["MB_ICONEXCLAMATION", winsound.MB_ICONEXCLAMATION],
-            ["MB_ICONASTERISK", winsound.MB_ICONASTERISK],
-            ["DEFAULT", -1],
-        ], myConfig.get('SoundDah', None))
+            ["Dah Sound", "dah_sound.wav"],  # Ensure the path is correct
+            ["Default", "dah_sound.wav"]  # Optional: default sound path
+        ], myConfig.get('SoundDah', "dah_sound.wav"))
 
         DitSoundLabel = QLabel("Dit sound: ")
         DahSoundLabel = QLabel("Dah sound: ")
