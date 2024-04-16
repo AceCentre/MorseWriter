@@ -1,3 +1,4 @@
+import pdb
 import sys
 import threading
 import os
@@ -5,6 +6,8 @@ import json
 import configparser
 from enum import Enum
 from collections import OrderedDict
+from threading import Thread
+
 
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QIcon
@@ -20,6 +23,12 @@ from pynput.mouse import Controller as MouseController
 import pressagio.callback
 import pressagio
 from nava import play 
+import logging
+
+# Configure basic logger
+logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',
+                    format='%(name)s - %(levelname)s - %(message)s')
+
 
 # Local imports
 import icons_rc  
@@ -552,9 +561,15 @@ def Init():
         typestate = None
     codeslayoutview = CodesLayoutViewWidget(layoutmanager.active)
 
-def Go():
+def listen_keys():
     with Listener(on_press=on_press, on_release=on_release) as listener:
         listener.join()
+
+def Go():
+    #pdb.set_trace()
+    #thread = Thread(target=listen_keys)
+    #thread.start()
+    pass
 
 
 class Window(QDialog):
@@ -942,7 +957,6 @@ class CodeRepresentation(QWidget):
         self.updateView()
 
 class CodesLayoutViewWidget(QWidget):
-    
     feedbackSignal = pyqtSignal()
     changeLayoutSignal = pyqtSignal()
     hideSignal = pyqtSignal()
@@ -972,19 +986,33 @@ class CodesLayoutViewWidget(QWidget):
     
     def __init__(self, layout):
         super(CodesLayoutViewWidget, self).__init__()
-        self.feedbackSignal.connect(self.onFeedback)
-        self.changeLayoutSignal.connect(self.changeLayout)
-        self.hideSignal.connect(self.hide)
-        self.showSignal.connect(self.show)
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
+        self.setupLayout(layout)
+        self.show()  # Consider moving `show()` out of `__init__` if not necessary at initialization
+        self.adjustPosition()
+
+        
+    def adjustPosition(self):
+        # Assuming app is globally accessible or passed appropriately
+        ssize = QApplication.desktop().screenGeometry()
+        size = self.frameSize()
+        x = int(myConfig['winposx']) if myConfig['winxaxis'] == 'left' else ssize.width() - size.width() - int(myConfig['winposx'])
+        y = int(myConfig['winposy']) if myConfig['winyaxis'] == 'top' else ssize.height() - size.height() - int(myConfig['winposy'])
+        self.move(x, y)
+
+
+    def setupLayout(self, layout):
         self.vlayout = QVBoxLayout()
+        self.setLayout(self.vlayout)
         hlayout = QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
         self.vlayout.addLayout(hlayout)
+    
         self.keystroke_crs_map = {}
         self.crs = {}
         x = 0
         perrow = layout['column_len']
+    
         for item in layout['items']:
             if 'emptyspace' not in item or not item['emptyspace']:
                 coderep = CodeRepresentation(None, item['code'], item, "Green")
@@ -998,17 +1026,6 @@ class CodesLayoutViewWidget(QWidget):
                 hlayout = QHBoxLayout()
                 hlayout.setContentsMargins(0, 0, 0, 0)
                 self.vlayout.addLayout(hlayout)
-        self.setLayout(self.vlayout)
-        self.vlayout.setContentsMargins(0, 0, 0, 0)
-        self.show()
-        self.onFeedback()
-        ssize = app.desktop().screenGeometry()
-        size = self.frameSize()
-        x = int(myConfig['winposx']) if myConfig['winxaxis'] == 'left' else\
-            ssize.width() - size.width() - int(myConfig['winposx'])
-        y = int(myConfig['winposy']) if myConfig['winyaxis'] == 'top' else\
-            ssize.height() - size.height() - int(myConfig['winposy'])
-        self.move(x, y)
     
     def Dit(self):
         for item in self.crs.values():
@@ -1024,7 +1041,13 @@ class CodesLayoutViewWidget(QWidget):
             
     def closeEvent(self, event):
         window.backToSettings()
-    
+
+class CustomApplication(QApplication):
+    def notify(self, receiver, event):
+        print(f"Event: {event.type()}, Receiver: {receiver.__class__.__name__}")
+        return super().notify(receiver, event)
+
+
 if __name__ == '__main__':
     global layoutmanage, window, myConfig
     import sys
@@ -1037,8 +1060,8 @@ if __name__ == '__main__':
     if layoutmanager.active is None:
         raise AssertionError("layouts.json has no mainlayout")
     try:
-        app = QApplication(sys.argv)
-    
+        #app = QApplication(sys.argv)
+        app = CustomApplication(sys.argv)
         if not QSystemTrayIcon.isSystemTrayAvailable():
             QMessageBox.critical(None, "MorseWriter", "I couldn't detect any system tray on this system.")
             sys.exit(1)
@@ -1046,10 +1069,6 @@ if __name__ == '__main__':
         QApplication.setQuitOnLastWindowClosed(False)
     
         window = Window()
-        #code = CodeRepresentation(window, "A", "233232")
-        #code.disable()
-        #code.tickDitDah()
-        #code.tickDitDah()
         if myConfig.get("autostart", False):
             window.start(myConfig)
         else:
