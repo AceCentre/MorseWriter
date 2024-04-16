@@ -1,6 +1,10 @@
 MorseWriter
 -----------
 
+> :warning: **This branch is broken. But we are nearly there**: Basically run it with py3 and pip install the requirements. You will see what happens.. Its a thread issue with pynput 
+
+
+
 <p align="center">
   <img src="https://github.com/willwade/MorseWriter/raw/master/icon.png" height="128" width="128"  />
   <img src="https://github.com/willwade/MorseWriter/raw/master/screenshot1.png" height="111" width="194" />
