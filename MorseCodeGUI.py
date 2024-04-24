@@ -1,42 +1,37 @@
 # THIS CODE IS GNARLY! BE WARNED. YOU NEED YOUR Object Oriented head firmly screwed on
 
+# Standard library imports
+import configparser
+import json
+import logging
+import os
 import pdb
 import sys
 import threading
-import os
-import json
-import configparser
-from enum import Enum
+import time
 from collections import OrderedDict
+from enum import Enum
 from threading import Thread
 
-
-from PyQt5.QtCore import QThread,pyqtSignal,QTimer, Qt
+# Third-party imports
+from PyQt5.QtCore import QThread, pyqtSignal, QTimer, Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (QVBoxLayout, QDialog, QWidget, QApplication,
-                             QSystemTrayIcon, QGroupBox, QRadioButton,
-                             QMessageBox, QHBoxLayout, QComboBox, QLabel,
-                             QLineEdit, QGridLayout, QCheckBox, QPushButton,
-                             QAction, QMenu)
-                             
-
+from PyQt5.QtWidgets import (QAction, QCheckBox, QComboBox, QDialog, QGridLayout,
+                             QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox,
+                             QPushButton, QRadioButton, QSystemTrayIcon, QVBoxLayout,
+                             QWidget, QApplication, QMenu)
 from pynput.keyboard import Controller as KeyboardController, Listener, Key, KeyCode
-from pynput.mouse import Controller as MouseController
+from pynput.mouse import Controller as MouseController, Button
+from nava import play
 
+# Local application/library specific imports
 import pressagio.callback
 import pressagio
-from nava import play 
-import logging
-import time
-import sys
+import icons_rc  
 
 # Configure basic logger
 logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',
                     format='%(name)s - %(levelname)s - %(message)s')
-
-
-# Local imports
-import icons_rc  
 
 lastkeydowntime = -1
 
@@ -46,17 +41,12 @@ pressagioconfig.read(pressagioconfig_file)
 
 mouse_controller = MouseController()
 keyboard_controller = KeyboardController()
-
 keystrokes_state = {}
-disabled = False
-
 currentX = 0
 currentY = 0
-
 pressingKey = False
-
-layoutmanager = None
 typestate = None
+
 # If configfile file is lost.. 
 DEFAULT_CONFIG = {
   "keylen": 1,
@@ -79,9 +69,6 @@ DEFAULT_CONFIG = {
   "winposy": 10
 }
 
-
-import json
-import os
 
 class ConfigManager:
     def __init__(self, config_file=None, default_config=DEFAULT_CONFIG):
@@ -315,30 +302,41 @@ class TypeState (pressagio.callback.Callback):
         return self.predictions
 
 class KeyListenerThread(QThread):
-    keyEvent = pyqtSignal(object, bool)  # key object and is_press boolean
+    keyEvent = pyqtSignal(object, bool)  # Adjusted for clarity: the first parameter is the key, the second is a boolean for press/release
 
     def __init__(self, configured_keys=None, parent=None):
         super(KeyListenerThread, self).__init__(parent)
         self.configured_keys = configured_keys
         self.running = True
+        print("KeyListenerThread initialized with keys:", self.configured_keys)
 
     def run(self):
-        with Listener(on_press=self.on_press, on_release=self.on_release) as self.listener:
-            while self.running:
-                self.listener.join()
+        print("KeyListenerThread starting...")
+        try:
+            with Listener(on_press=self.on_press, on_release=self.on_release) as self.listener:
+                print("Listener is running...")
+                while self.running:
+                    self.listener.join()
+                print("Listener loop exited.")
+        except Exception as e:
+            print(f"Listener encountered an error: {e}")
 
     def on_press(self, key):
+        print(f"Pressed: {key}")
         if self.configured_keys and key not in self.configured_keys:
+            print(f"Ignoring key: {key}")
             return  # Ignore keys not in configured_keys
         if self.running:
-            self.keyEvent.emit(key, True)
+            self.keyEvent.emit(key, True)  # Emitting key object directly, check if this needs adjustment
 
     def on_release(self, key):
+        print(f"Released: {key}")
         if self.configured_keys and key not in self.configured_keys:
+            print(f"Ignoring key: {key}")
             return  # Ignore keys not in configured_keys
         if self.running:
             self.keyEvent.emit(key, False)
-            
+
             
 class LayoutManager:
     def __init__(self, fn, actions):
@@ -346,7 +344,7 @@ class LayoutManager:
         with open(fn, "r") as f:
             data = json.load(f)
         self.layouts = {k: self._layout_import(v) for k, v in data['layouts'].items()}
-        self.active = self.layouts.get(data['mainlayout'], None)
+        self.active = self.layouts.get(data['mainlayout'])
         if self.active is None:
             raise ValueError("No main layout found or the specified main layout is not defined in layouts.json.")
         self.mainlayout = self.active
@@ -379,7 +377,6 @@ def moveMouse(x_delta, y_delta):
     mouse_controller.position = new_pos
 
 def clickMouse(button='left', action='click'):
-    from pynput.mouse import Button
     btn = Button.left if button == 'left' else Button.right
     if action == 'click':
         mouse_controller.click(btn)
@@ -388,37 +385,6 @@ def clickMouse(button='left', action='click'):
     elif action == 'release':
         mouse_controller.release(btn)
 
-## NOT BEING USED
-def PressKey(down, key):
-    global pressingKey
-    pressingKey = True
-    if myConfig['debug']:
-        print("presskey: ", key, "down" if down else "up")
-    
-    try:
-        # Using pynput to press and release keys
-        if down:
-            keyboard_controller.press(key)
-        else:
-            keyboard_controller.release(key)
-    finally:
-        pressingKey = False
-        
-## NOT BEING USED
-def TypeKey(key, keystroke_time=10):
-    PressKey(True, key)
-    # Delay between press and release
-    time.sleep(keystroke_time / 1000)  # Convert milliseconds to seconds
-    PressKey(False, key)
-    if myConfig['debug']:
-        print("typekey: ", key)
-
-def disableKeyUpDown(event):
-    if pressingKey:
-        updateKeyboardState(event)
-        onKeyboardEvent(event)
-        return True
-    return False
 
 def getPossibleCombos(currentCharacter):
     x = ""
@@ -431,7 +397,6 @@ def getPossibleCombos(currentCharacter):
     print("possible: " + str(possibleactions))
 
 
-    
 class Action (object):
     def __init__ (self, item):
         self.item = item
@@ -575,10 +540,6 @@ class PredictionSelectLayoutAction(Action):
                     # Use pynput to type characters instead of win32api
                     keyboard_controller.type(char)  # This handles normal characters
 
-def listen_keys():
-    with Listener(on_press=on_press, on_release=on_release) as listener:
-        listener.join()
-
 
 class Window(QDialog):
     def __init__(self,layoutManager=None, configManager=None):
@@ -586,6 +547,7 @@ class Window(QDialog):
         self.layoutManager = layoutManager
         self.configManager = configManager
         self.config = self.configManager.get_config() 
+        print(f"Window initialized with layout: {self.layoutManager.mainlayoutname}")        
         self.actions = self.configManager.actions
         self.keystrokes = self.configManager.keystrokes
         self.keystrokemap = self.configManager.keystrokemap
@@ -645,17 +607,35 @@ class Window(QDialog):
         return key_names
     
     def startKeyListener(self):
-        pynputKeys = {"SPACE": Key.space, "ENTER": Key.enter, "ONE": "1", "TWO": "2", "Z": "Z", "X": "X", "F8": Key.f8, "F9": Key.f9, "RCTRL": Key.ctrl_r, "LCTRL": Key.ctrl_l, "RSHIFT": Key.shift_r, "LSHIFT": Key.shift_l, "LALT": Key.alt_l}
+        pynputKeys = {
+            "SPACE": Key.space, "ENTER": Key.enter,
+            "ONE": KeyCode.from_char('1'), "TWO": KeyCode.from_char('2'),
+            "Z": KeyCode.from_char('z'), "X": KeyCode.from_char('x'),
+            "F8": Key.f8, "F9": Key.f9,
+            "RCTRL": Key.ctrl_r, "LCTRL": Key.ctrl_l,
+            "RSHIFT": Key.shift_r, "LSHIFT": Key.shift_l,
+            "LALT": Key.alt_l
+        }
+        print(f"Available keys in pynputKeys: {list(pynputKeys.keys())}")  # Print available keys
+
         try:
-            key_names = self.get_configured_keys()
-            configured_keys = [pynputKeys[key] for key in key_names if key is not None]
+            key_names = self.get_configured_keys()  # Retrieve configured key names
+            print(f"Configured key names: {key_names}")
+            configured_keys = [pynputKeys[key.upper()] for key in key_names if key.upper() in pynputKeys]
+            print(f"Configured pynput keys: {configured_keys}")
+    
+            if not configured_keys:  # If no valid keys are configured, log and avoid starting the thread
+                print("No valid keys configured for KeyListenerThread.")
+                return
+    
             if not self.listenerThread:
                 self.listenerThread = KeyListenerThread(configured_keys=configured_keys)
                 self.listenerThread.keyEvent.connect(self.handle_key_event)
                 self.listenerThread.start()
             print("KeyListenerThread started successfully.")
         except Exception as e:
-            print(f"Failed to start KeyListenerThread: {str(e)}")
+            print(f"Failed to start KeyListenerThread due to error: {str(e)}")
+            print(f"Problematic keys: {[key for key in key_names if key.upper() not in pynputKeys]}")
 
     
     def updateAudioProperties(self):
@@ -665,7 +645,8 @@ class Window(QDialog):
         else:
             self.iconComboBoxSoundDit.setEnabled(False)
             self.iconComboBoxSoundDah.setEnabled(False)
-
+    
+    ## I DONT KNOW WHY THIS IS HERE.  
     def start(self, config):
         self.config = config
         self.init()
@@ -948,6 +929,7 @@ class Window(QDialog):
         self.trayIcon.setContextMenu(self.trayIconMenu)
         
     def handle_key_event(self, key, is_press):
+        print(f"Event received: Key={key}, Pressed={is_press}")
         try:
             if is_press:
                 self.on_press(key)
@@ -955,6 +937,7 @@ class Window(QDialog):
                 self.on_release(key)
         except Exception as e:
             print(f"Error handling key event: {e}")
+
     
     def on_press(self, key):
         try:
@@ -1196,12 +1179,11 @@ class CodesLayoutViewWidget(QWidget):
 
 class CustomApplication(QApplication):
     def notify(self, receiver, event):
-        print(f"Event: {event.type()}, Receiver: {receiver.__class__.__name__}")
+        #print(f"Event: {event.type()}, Receiver: {receiver.__class__.__name__}")
         return super().notify(receiver, event)
 
 
 if __name__ == '__main__':
-    global layoutmanage, window
     configmanager = ConfigManager(os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.json"), default_config=DEFAULT_CONFIG)
     layoutmanager = LayoutManager(os.path.join(os.path.dirname(os.path.realpath(__file__)), "layouts.json"), configmanager.actions)
     
