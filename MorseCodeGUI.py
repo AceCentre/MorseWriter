@@ -9,13 +9,14 @@ from collections import OrderedDict
 from threading import Thread
 
 
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import QThread,pyqtSignal, Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QVBoxLayout, QDialog, QWidget, QApplication,
                              QSystemTrayIcon, QGroupBox, QRadioButton,
                              QMessageBox, QHBoxLayout, QComboBox, QLabel,
                              QLineEdit, QGridLayout, QCheckBox, QPushButton,
                              QAction, QMenu)
+                             
 
 from pynput.keyboard import Controller as KeyboardController, Listener, Key, KeyCode
 from pynput.mouse import Controller as MouseController
@@ -91,6 +92,24 @@ class TypeState (pressagio.callback.Callback):
 
 
         return self.predictions
+
+class KeyListenerThread(QThread):
+    keyEvent = pyqtSignal(object, bool)  # key object and is_press boolean
+
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        with Listener(on_press=self.on_press, on_release=self.on_release) as listener:
+            listener.join()
+
+    def on_press(self, key):
+        self.keyEvent.emit(key, True)
+
+    def on_release(self, key):
+        self.keyEvent.emit(key, False)
+        if key == Key.esc:
+            return False  # Stop listener
 
 class LayoutManager:
     def __init__(self, fn, actions):
@@ -565,12 +584,6 @@ def listen_keys():
     with Listener(on_press=on_press, on_release=on_release) as listener:
         listener.join()
 
-def Go():
-    #pdb.set_trace()
-    #thread = Thread(target=listen_keys)
-    #thread.start()
-    pass
-
 
 class Window(QDialog):
     def __init__(self):
@@ -597,6 +610,9 @@ class Window(QDialog):
 
         self.setWindowTitle("MorseWriter V2.1")
         self.resize(400, 300)
+        self.listenerThread = KeyListenerThread()
+        self.listenerThread.keyEvent.connect(self.handle_key_event)
+        self.listenerThread.start()
 
     def updateAudioProperties(self):
         if self.withSound.isChecked():
@@ -612,7 +628,6 @@ class Window(QDialog):
         myConfig.update(config)
         myConfig['fontsizescale'] = int(config['fontsizescale']) / 100.0
         Init()
-        Go()
 
     def collectConfig (self):
         config = dict();
@@ -648,7 +663,6 @@ class Window(QDialog):
         if myConfig['debug']:
             print("Config: " + str(myConfig['keylen']) + " / " + str(myConfig['keyone']) + " / " + str(myConfig['keytwo']) + " / " + str(myConfig['keythree']) + " / " + str(myConfig['maxDitTime']) + " / " + str(myConfig['minLetterPause']))
         Init()
-        Go()
 
     def closeEvent(self, event):
         app.quit
@@ -866,6 +880,27 @@ class Window(QDialog):
         self.trayIconMenu.addAction(self.quitAction)
         self.trayIcon = QSystemTrayIcon(self)
         self.trayIcon.setContextMenu(self.trayIconMenu)
+        
+    def handle_key_event(self, key, is_press):
+        if is_press:
+            self.on_press(key)
+        else:
+            self.on_release(key)
+
+    def on_press(self, key):
+        try:
+            print(f'Key {key} pressed')
+        except AttributeError:
+            print(f'Special key {key} pressed')
+
+    def on_release(self, key):
+        print(f'Key {key} released')
+
+    def closeEvent(self, event):
+        # Ensure to stop the thread when the window is closed
+        self.listenerThread.quit()
+        self.listenerThread.wait()
+        super().closeEvent(event)
 
 
 class CodeRepresentation(QWidget):
