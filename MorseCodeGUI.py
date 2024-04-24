@@ -1,5 +1,3 @@
-# THIS CODE IS GNARLY! BE WARNED. YOU NEED YOUR Object Oriented head firmly screwed on
-
 # Standard library imports
 import configparser
 import json
@@ -267,17 +265,6 @@ class ConfigManager:
     
         return actions, keystrokes, keystrokemap
         
-class PressagioCallback(pressagio.callback.Callback):
-    def __init__(self, buffer):
-        super().__init__()
-        self.buffer = buffer
-
-    def past_stream(self):
-        return self.buffer
-
-    def future_stream(self):
-        return ""
-
 
 class TypeState (pressagio.callback.Callback):
     def __init__ (self):
@@ -302,41 +289,54 @@ class TypeState (pressagio.callback.Callback):
         return self.predictions
 
 class KeyListenerThread(QThread):
-    keyEvent = pyqtSignal(object, bool)  # Adjusted for clarity: the first parameter is the key, the second is a boolean for press/release
+    keyEvent = pyqtSignal(str, bool)  # Emitting key description and press state
 
     def __init__(self, configured_keys=None, parent=None):
         super(KeyListenerThread, self).__init__(parent)
-        self.configured_keys = configured_keys
+        self.configured_keys = configured_keys or []
+        print("Initialized with keys:", self.configured_keys)
         self.running = True
-        print("KeyListenerThread initialized with keys:", self.configured_keys)
-
+    
     def run(self):
-        print("KeyListenerThread starting...")
-        try:
-            with Listener(on_press=self.on_press, on_release=self.on_release) as self.listener:
-                print("Listener is running...")
-                while self.running:
-                    self.listener.join()
-                print("Listener loop exited.")
-        except Exception as e:
-            print(f"Listener encountered an error: {e}")
+        # Start the listener with this thread's on_press and on_release methods
+        with Listener(on_press=self.on_press, on_release=self.on_release, suppress=True) as listener:
+            listener.join()
 
     def on_press(self, key):
         print(f"Pressed: {key}")
+        # Check if key is in configured keys; if not, ignore it
         if self.configured_keys and key not in self.configured_keys:
             print(f"Ignoring key: {key}")
-            return  # Ignore keys not in configured_keys
-        if self.running:
-            self.keyEvent.emit(key, True)  # Emitting key object directly, check if this needs adjustment
+            return
+        try:
+            print("Handling key:", key)
+            # Emit key.char if possible, otherwise emit key's string representation
+            if hasattr(key, 'char') and key.char:
+                self.keyEvent.emit(key.char, True)
+            else:
+                self.keyEvent.emit(str(key), True)
+        except AttributeError:
+            self.keyEvent.emit(str(key), True)
 
     def on_release(self, key):
-        print(f"Released: {key}")
         if self.configured_keys and key not in self.configured_keys:
-            print(f"Ignoring key: {key}")
-            return  # Ignore keys not in configured_keys
-        if self.running:
-            self.keyEvent.emit(key, False)
+            return
+        if hasattr(key, 'char') and key.char:
+            self.keyEvent.emit(key.char, False)
+        else:
+            self.keyEvent.emit(str(key), False)
 
+
+class PressagioCallback(pressagio.callback.Callback):
+    def __init__(self, buffer):
+        super().__init__()
+        self.buffer = buffer
+
+    def past_stream(self):
+        return self.buffer
+
+    def future_stream(self):
+        return ""
             
 class LayoutManager:
     def __init__(self, fn, actions):
@@ -937,6 +937,10 @@ class Window(QDialog):
                 self.on_release(key)
         except Exception as e:
             print(f"Error handling key event: {e}")
+            
+    def handle_key_event(self, key, is_press):
+        print(f"Key {key} pressed: {is_press}")
+
 
     
     def on_press(self, key):
