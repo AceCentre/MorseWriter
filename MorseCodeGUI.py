@@ -294,12 +294,12 @@ class TypeState (pressagio.callback.Callback):
 
         return self.predictions
 
-class KeyboardListenerThread(QThread):
+class KeyListenerThread(QThread):
     # Define signals for key press and release
-    keyPressed = pyqtSignal(str, bool)  # bool indicates press or release
+    keyEvent = pyqtSignal(str, bool)  # bool indicates press or release
 
     def __init__(self, configured_keys):
-        super(KeyboardListenerThread, self).__init__()
+        super(KeyListenerThread, self).__init__()
         self.configured_keys = configured_keys  # List of pynput key objects
         logging.debug(f"KeyListener initialized with keys: {[key.name for key in self.configured_keys]}")
 
@@ -311,12 +311,12 @@ class KeyboardListenerThread(QThread):
     def on_press(self, key):
         if key in self.configured_keys:
             key_description = self.get_key_description(key)
-            self.keyPressed.emit(key_description, True)
+            self.keyEvent.emit(key_description, True)
 
     def on_release(self, key):
         if key in self.configured_keys:
             key_description = self.get_key_description(key)
-            self.keyPressed.emit(key_description, False)
+            self.keyEvent.emit(key_description, False)
 
     def get_key_description(self, key):
         # Returns a string descriptor of the key
