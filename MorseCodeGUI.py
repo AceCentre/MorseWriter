@@ -295,34 +295,33 @@ class TypeState (pressagio.callback.Callback):
         return self.predictions
 
 class KeyListenerThread(QThread):
-    # Define signals for key press and release
-    keyEvent = pyqtSignal(str, bool)  # bool indicates press or release
+    keyEvent = pyqtSignal(str, bool)  # Emit key description and press/release status
 
     def __init__(self, configured_keys):
-        super(KeyListenerThread, self).__init__()
-        self.configured_keys = configured_keys  # List of pynput key objects
-        logging.debug(f"KeyListener initialized with keys: {[key.name for key in self.configured_keys]}")
+        super().__init__()
+        self.configured_keys = configured_keys
+        logging.debug(f"KeyListener initialized with keys: {[key.name for key in self.configured_keys if hasattr(key, 'name')] + [key.char for key in self.configured_keys if hasattr(key, 'char') and key.char]}")
 
     def run(self):
-        # This method runs in the new thread
         with Listener(on_press=self.on_press, on_release=self.on_release) as listener:
             listener.join()
 
     def on_press(self, key):
-        if key in self.configured_keys:
+        if any(key == k for k in self.configured_keys):
             key_description = self.get_key_description(key)
             self.keyEvent.emit(key_description, True)
 
     def on_release(self, key):
-        if key in self.configured_keys:
+        if any(key == k for k in self.configured_keys):
             key_description = self.get_key_description(key)
             self.keyEvent.emit(key_description, False)
 
     def get_key_description(self, key):
-        # Returns a string descriptor of the key
         if hasattr(key, 'char') and key.char:
-            return key.char  # Normal character keys
-        return key.name  # Special keys like 'shift' or 'ctrl'
+            return key.char
+        elif hasattr(key, 'name'):
+            return key.name
+        return 'Unknown key'
         
 
 class PressagioCallback(pressagio.callback.Callback):
@@ -729,7 +728,7 @@ class Window(QDialog):
         self.config = self.collect_config()
         self.init()  # Assume this initializes key listening etc
         ## HELLO! WE HAVE MUTED THIS AS IT CRASHES EVERYTHING!
-        #self.startKeyListener()
+        self.startKeyListener()
 
 
     def closeEvent(self, event):
