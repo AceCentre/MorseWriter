@@ -272,7 +272,7 @@ class ConfigManager:
         return actions
 
         
-class TypeState (pressagio.callback.Callback):
+class TypeState(pressagio.callback.Callback):
     def __init__ (self):
         self.text = ""
         self.predictions = None
@@ -284,37 +284,55 @@ class TypeState (pressagio.callback.Callback):
     def pushchar (self, char):
         self.text += char
         self.predictions = None
+        logging.debug(f"Updated TypeState text: {self.text}")
     def popchar (self):
         self.text = self.text[:-1]
         self.predictions = None
-    def getpredictions (self):
-        if self.predictions == None:
-            self.predictions = self.presage.predict()
-
-
+    def getpredictions(self):
+        if self.predictions is None:
+            try:
+                self.predictions = self.presage.predict()
+            except Exception as e:
+                logging.error(f"Failed to generate predictions: {str(e)}")
+                self.predictions = []
         return self.predictions
 
+
 class KeyListenerThread(QThread):
-    keyEvent = pyqtSignal(str, bool)  # Emit key description and press/release status
+    keyEvent = pyqtSignal(str, bool)
 
     def __init__(self, configured_keys):
         super().__init__()
         self.configured_keys = configured_keys
-        logging.debug(f"KeyListener initialized with keys: {[key.name for key in self.configured_keys if hasattr(key, 'name')] + [key.char for key in self.configured_keys if hasattr(key, 'char') and key.char]}")
+        self.listener = None
 
     def run(self):
-        with Listener(on_press=self.on_press, on_release=self.on_release) as listener:
-            listener.join()
+        try:
+            self.listener = Listener(on_press=self.on_press, on_release=self.on_release)
+            self.listener.start()
+            self.listener.join()
+        except Exception as e:
+            logging.error(f"Listener failed: {e}")
+
+    def stop(self):
+        if self.listener:
+            self.listener.stop()
 
     def on_press(self, key):
-        if any(key == k for k in self.configured_keys):
-            key_description = self.get_key_description(key)
-            self.keyEvent.emit(key_description, True)
+        try:
+            if any(key == k for k in self.configured_keys):
+                key_description = self.get_key_description(key)
+                self.keyEvent.emit(key_description, True)
+        except Exception as e:
+            logging.error(f"Error processing key press: {e}")
 
     def on_release(self, key):
-        if any(key == k for k in self.configured_keys):
-            key_description = self.get_key_description(key)
-            self.keyEvent.emit(key_description, False)
+        try:
+            if any(key == k for k in self.configured_keys):
+                key_description = self.get_key_description(key)
+                self.keyEvent.emit(key_description, False)
+        except Exception as e:
+            logging.error(f"Error processing key release: {e}")
 
     def get_key_description(self, key):
         if hasattr(key, 'char') and key.char:
@@ -322,7 +340,7 @@ class KeyListenerThread(QThread):
         elif hasattr(key, 'name'):
             return key.name
         return 'Unknown key'
-        
+
 
 class PressagioCallback(pressagio.callback.Callback):
     def __init__(self, buffer):
@@ -478,7 +496,7 @@ class ActionLegacy (Action):
             logging.debug(f"No action defined for key: {self.key}")
     
     def handleRepeatMode(self):
-        global repeaton, myConfig
+        global repeaton
         if repeaton:
             if self.config.get('debug', False):
                 logging.info("repeat OFF")
@@ -539,7 +557,6 @@ class PredictionSelectLayoutAction(Action):
             return predictions[target]
         return ""
 
-
     def perform(self):
         if typestate is not None:
             target = self.item['target']
@@ -570,7 +587,7 @@ class Window(QDialog):
         self.keystrokes = []
         self.keystrokemap = {}
         logging.info(f"Window initialized with layout: {self.layoutManager.main_layout_name}")
-        # just empty vars
+
         self.listenerThread = None
         self.currentCharacter = []
         self.lastKeyDownTime = None
@@ -648,7 +665,7 @@ class Window(QDialog):
             if not configured_keys:  # If no valid keys are configured, log and avoid starting the thread
                 logging.warning("No valid keys configured for KeyListenerThread.")
                 return
-    
+                
             if not self.listenerThread:
                 self.listenerThread = KeyListenerThread(configured_keys=configured_keys)
                 self.listenerThread.keyEvent.connect(self.handle_key_event)
@@ -666,12 +683,6 @@ class Window(QDialog):
         else:
             self.iconComboBoxSoundDit.setEnabled(False)
             self.iconComboBoxSoundDah.setEnabled(False)
-    
-    ## I DONT KNOW WHY THIS IS HERE.  
-    def start(self, config):
-        self.config = config
-        self.init()
-        self.startKeyListener()
         
     def changeLayout(self, layout_name):
         # Check if the layout exists in the layoutManager by name
@@ -727,15 +738,12 @@ class Window(QDialog):
             self.hide()
         self.config = self.collect_config()
         self.init()  # Assume this initializes key listening etc
-        ## HELLO! WE HAVE MUTED THIS AS IT CRASHES EVERYTHING!
         self.startKeyListener()
-
 
     def closeEvent(self, event):
         self.stopIt()
         event.accept() 
-        app.quit
-        sys.exit()
+        QApplication.instance().quit()
         
     def setIcon(self):
         icon = QIcon(':/morse-writer.ico')
@@ -922,16 +930,15 @@ class Window(QDialog):
         saveConfig(configfile, data)
         
     def toggleOnOff(self):
-        global myConfig
-        if myConfig['off']:
-            myConfig['off'] = False
+        if self.config['off']:
+            self.config['off'] = False
         else:
-            myConfig['off'] = True
+            self.config['off'] = True
     
     def stopIt(self):
         logging.debug("Stopping components...")
         if self.listenerThread is not None:
-            self.listenerThread.stop_listener()
+            self.listenerThread.stop()
             self.listenerThread.wait()
         if self.codeslayoutview is not None:
             self.codeslayoutview.hide()
@@ -996,14 +1003,12 @@ class Window(QDialog):
 
     def addDit(self):
         self.currentCharacter.append(1)  # Assuming 1 represents Dit
-        if myConfig['withsound']:
-            #winsound.Beep(myConfig['SoundDitFrequency'], myConfig['SoundDitDuration'])
+        if self.config['withsound']:
             play("res/dit_sound.wav")
 
     def addDah(self):
         self.currentCharacter.append(2)  # Assuming 2 represents Dah
-        if myConfig['withsound']:
-            #winsound.Beep(myConfig['SoundDahFrequency'], myConfig['SoundDahDuration'])
+        if self.config['withsound']:
             play("res/dah_sound.wav")
 
     def startEndCharacterTimer(self):
@@ -1012,7 +1017,7 @@ class Window(QDialog):
         self.endCharacterTimer = QTimer()
         self.endCharacterTimer.setSingleShot(True)
         self.endCharacterTimer.timeout.connect(self.endCharacter)
-        self.endCharacterTimer.start(int(myConfig['minLetterPause']))
+        self.endCharacterTimer.start(int(self.config['minLetterPause']))
 
     def endCharacter(self):
         morse_code = "".join(map(str, self.currentCharacter))
