@@ -402,9 +402,6 @@ class LayoutManager:
             return self.layouts[self.active_layout_name]
         else:
             raise ValueError("No active layout set.")
-        
-
-
 
 def moveMouse(x_delta, y_delta):
     current_pos = mouse_controller.position
