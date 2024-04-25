@@ -72,54 +72,7 @@ DEFAULT_CONFIG = {
 
 class ConfigManager:
     def __init__(self, config_file=None, default_config=DEFAULT_CONFIG):
-        self.config_file = config_file
-        self.default_config = default_config
-        self.actions, self.keystrokes, self.keystrokemap = self.initActions()
-        self.config = self.read_config()
-
-    def read_config(self):
-        if self.config_file and os.path.exists(self.config_file):
-            try:
-                with open(self.config_file, "r") as file:
-                    data = json.load(file)
-                    self.update_keystrokes(data)
-                    self.convert_types(data)
-                    return data
-            except (FileNotFoundError, json.JSONDecodeError, ValueError) as e:
-                logging.warning(f"Error loading configuration: {e}")
-        return self.default_config.copy()
-        
-
-    def update_keystrokes(self, data):
-        for key in ['keyone', 'keytwo', 'keythree']:
-            if key in data and data[key] in self.keystrokemap:
-                data[key] = self.keystrokemap[data[key]]
-
-    def convert_types(self, data):
-        if 'maxDitTime' in data:
-            data['maxDitTime'] = float(data['maxDitTime'])
-        if 'minLetterPause' in data:
-            data['minLetterPause'] = float(data['minLetterPause'])
-        if 'fontsizescale' in data:
-            data['fontsizescale'] = int(data['fontsizescale'])
-
-    def save_config(self):
-        try:
-            with open(self.config_file, "w") as file:
-                json.dump(self.config, file, indent=4)
-        except Exception as e:
-            logging.warning(f"Error saving configuration: {e}")
-
-    def get_config(self):
-        return self.config
-    
-    def initActions(self):
-        # Local variable initialization
-        actions = {}
-        keystrokes = []
-        keystrokemap = {}
-
-        key_data = {
+        self.key_data = {
             "A": ('a', KeyCode.from_char('a'), 'a', None),
             "B": ('b', KeyCode.from_char('b'), 'b', None),
             "C": ('c', KeyCode.from_char('c'), 'c', None),
@@ -251,23 +204,74 @@ class ConfigManager:
             "MOUSEDOWNRIGHT40": ('ms rightdown 40', None, None, 2),
             "MOUSEDOWNRIGHT250": ('ms rightdown 250', None, None, 3)
         }
+        self.config_file = config_file
+        self.default_config = default_config
+        self.keystrokemap, self.keystrokes = self.initKeystrokeMap()
+        self.config = self.read_config()
+        self.actions = {}
 
-
-        for key, (label, key_code, character, arg) in key_data.items():
+    def initKeystrokeMap(self):
+        keystrokemap = {}
+        keystrokes = []
+        for key, (label, key_code, character, arg) in self.key_data.items():
             stroke = KeyStroke(key, label, key_code, character)
             keystrokes.append(stroke)
             keystrokemap[key] = stroke
-            actions[key] = (lambda item, label=label, key_code=key_code, arg=arg: 
-                ActionLegacy(item=item, arg=arg, label=label, key=key_code))
-            
-        # Special actions
-        actions["CHANGELAYOUT"] = lambda item: ChangeLayoutAction(item, window),
-        actions["PREDICTION_SELECT"] = PredictionSelectLayoutAction
-        actions["KEYSTROKE"] = lambda item: ActionKeyStroke(item, item['key'])
+        return keystrokemap, keystrokes
     
-        return actions, keystrokes, keystrokemap
+    def read_config(self):
+        if self.config_file and os.path.exists(self.config_file):
+            try:
+                with open(self.config_file, "r") as file:
+                    data = json.load(file)
+                    self.update_keystrokes(data)
+                    self.convert_types(data)
+                    return data
+            except (FileNotFoundError, json.JSONDecodeError, ValueError) as e:
+                logging.warning(f"Error loading configuration: {e}")
+        return self.default_config.copy()
         
 
+    def update_keystrokes(self, data):
+        for key in ['keyone', 'keytwo', 'keythree']:
+            if key in data and data[key] in self.keystrokemap:
+                data[key] = self.keystrokemap[data[key]]
+
+    def convert_types(self, data):
+        if 'maxDitTime' in data:
+            data['maxDitTime'] = float(data['maxDitTime'])
+        if 'minLetterPause' in data:
+            data['minLetterPause'] = float(data['minLetterPause'])
+        if 'fontsizescale' in data:
+            data['fontsizescale'] = int(data['fontsizescale'])
+
+    def save_config(self):
+        try:
+            with open(self.config_file, "w") as file:
+                json.dump(self.config, file, indent=4)
+        except Exception as e:
+            logging.warning(f"Error saving configuration: {e}")
+
+    def get_config(self):
+        return self.config
+        
+    def initActions(self, window):
+        actions = {}
+        for key, (label, key_code, character, arg) in self.key_data.items():
+            # Pass current loop variables as default values to ensure correct capturing
+            actions[key] = (lambda item, label=label, key_code=key_code, arg=arg: 
+                            ActionLegacy(item=item, arg=arg, label=label, key=key_code))
+    
+        # Define special actions, making sure to correctly handle lambda capturing
+        actions["CHANGELAYOUT"] = lambda item, window=window: ChangeLayoutAction(item, window)
+        #actions["PREDICTION_SELECT"] = lambda item: PredictionSelectLayoutAction(item)
+        actions["PREDICTION_SELECT"] = lambda item, window=window: PredictionSelectLayoutAction(
+                item, get_predictions_func=window.getTypeStatePredictions)
+        actions["KEYSTROKE"] = lambda item, key_data=self.key_data: ActionKeyStroke(item, key_data[item['action']])
+    
+        return actions
+
+        
 class TypeState (pressagio.callback.Callback):
     def __init__ (self):
         self.text = ""
@@ -290,46 +294,36 @@ class TypeState (pressagio.callback.Callback):
 
         return self.predictions
 
-class KeyListenerThread(QThread):
-    keyEvent = pyqtSignal(str, bool)  # Emitting key description and press state
+class KeyboardListenerThread(QThread):
+    # Define signals for key press and release
+    keyPressed = pyqtSignal(str, bool)  # bool indicates press or release
 
-    def __init__(self, configured_keys=None, parent=None):
-        super(KeyListenerThread, self).__init__(parent)
-        self.configured_keys = configured_keys or []
-        logging.debug("Initialized with keys:  %s", self.configured_keys)
-        self.running = True
-    
+    def __init__(self, configured_keys):
+        super(KeyboardListenerThread, self).__init__()
+        self.configured_keys = configured_keys  # List of pynput key objects
+        logging.debug(f"KeyListener initialized with keys: {[key.name for key in self.configured_keys]}")
+
     def run(self):
-        # Start the listener with this thread's on_press and on_release methods
-        #with Listener(on_press=self.on_press, on_release=self.on_release, suppress=True) as listener:
-            #listener.join()
+        # This method runs in the new thread
         with Listener(on_press=self.on_press, on_release=self.on_release) as listener:
             listener.join()
 
     def on_press(self, key):
-        logging.debug(f"Pressed: {key}")
-        # Check if key is in configured keys; if not, ignore it
-        if self.configured_keys and key not in self.configured_keys:
-            logging.debug(f"Ignoring key: {key}")
-            return
-        try:
-            logging.debug("Handling key: %s", key)
-            # Emit key.char if possible, otherwise emit key's string representation
-            if hasattr(key, 'char') and key.char:
-                self.keyEvent.emit(key.char, True)
-            else:
-                self.keyEvent.emit(str(key), True)
-        except AttributeError:
-            self.keyEvent.emit(str(key), True)
+        if key in self.configured_keys:
+            key_description = self.get_key_description(key)
+            self.keyPressed.emit(key_description, True)
 
     def on_release(self, key):
-        if self.configured_keys and key not in self.configured_keys:
-            return
-        if hasattr(key, 'char') and key.char:
-            self.keyEvent.emit(key.char, False)
-        else:
-            self.keyEvent.emit(str(key), False)
+        if key in self.configured_keys:
+            key_description = self.get_key_description(key)
+            self.keyPressed.emit(key_description, False)
 
+    def get_key_description(self, key):
+        # Returns a string descriptor of the key
+        if hasattr(key, 'char') and key.char:
+            return key.char  # Normal character keys
+        return key.name  # Special keys like 'shift' or 'ctrl'
+        
 
 class PressagioCallback(pressagio.callback.Callback):
     def __init__(self, buffer):
@@ -343,47 +337,56 @@ class PressagioCallback(pressagio.callback.Callback):
         return ""
             
 class LayoutManager:
-    def __init__(self, fn, actions):
-        self.actions = actions
-        with open(fn, "r") as f:
-            data = json.load(f)
-        self.layouts = {k: self._layout_import(v) for k, v in data['layouts'].items()}
-        self.active = self.layouts.get(data['mainlayout'])
-        if self.active is None:
-            raise ValueError("No main layout found or the specified main layout is not defined in layouts.json.")
-        self.mainlayout = self.active
-        self.mainlayoutname = data['mainlayout']  # remains static as the initial layout
-        self.activelayoutname = data['mainlayout']  # dynamic, changes with set_active
+    def __init__(self, layout_file):
+        self.layout_file = layout_file
+        self.layouts = {}
+        self.active_layout_name = None
+        self.main_layout_name = None
+        self.load_layouts()
 
-    def _layout_import(self, layout):
-        if 'column_len' not in layout:
-            raise KeyError("The layout is missing 'column_len'.")
-        for item in layout['items']:
-            action_name = item.get('action')
-            if action_name in self.actions:
-                action_factory = self.actions[action_name]
-                try:
-                    item['_action'] = action_factory(item)
-                    logging.debug(f"Creating action for {action_name} with item: {item}")
-                except Exception as e:
-                    logging.critical(f"Failed to create action for {action_name} with item: {item}")
-                    logging.critical(f"Error: {str(e)}")
-            else:
-                item['_action'] = None
-        return layout
-    
+    def load_layouts(self):
+        """Loads layout data from a JSON file without assigning actions."""
+        try:
+            with open(self.layout_file, "r") as f:
+                data = json.load(f)
+            self.layouts = {k: v for k, v in data['layouts'].items()}
+            self.main_layout_name = data.get('mainlayout')
+            self.active_layout_name = data.get('mainlayout')
+            if self.active_layout_name not in self.layouts:
+                raise ValueError("No valid main layout found in the layout file.")
+        except FileNotFoundError:
+            raise Exception(f"Layout file {self.layout_file} not found.")
+        except json.JSONDecodeError:
+            raise Exception("Error decoding JSON from the layout file.")
+
+    def set_actions(self, actions):
+        """Integrates actions with the layout items loaded from the layout file."""
+        for layout_name, layout in self.layouts.items():
+            if 'items' in layout:
+                for item in layout['items']:
+                    action_name = item.get('action')
+                    if action_name in actions:
+                        item['_action'] = actions[action_name](item)
+                    else:
+                        item['_action'] = None
+                        logging.warning(f"No action found for {action_name} in layout {layout_name}")
+
     def set_active(self, layout_name):
-        """Sets the active layout by name and updates activelayoutname."""
+        """Sets the active layout by name."""
         if layout_name in self.layouts:
-            self.active = self.layouts[layout_name]
-            self.activelayoutname = layout_name
+            self.active_layout_name = layout_name
             logging.info(f"Active layout set to {layout_name}")
         else:
             raise ValueError("Specified layout does not exist.")
+
+    def get_active_layout(self):
+        """Returns the currently active layout."""
+        if self.active_layout_name:
+            return self.layouts[self.active_layout_name]
+        else:
+            raise ValueError("No active layout set.")
         
-    def get_active(self):
-        """Returns the name of the currently active layout."""
-        return self.activelayoutname
+
 
 
 def moveMouse(x_delta, y_delta):
@@ -526,16 +529,17 @@ class ChangeLayoutAction(Action):
             raise ValueError(f"Layout '{target_layout}' not found")
 
 class PredictionSelectLayoutAction(Action):
-    def __init__(self, item):
-        super().__init__(item) 
+    def __init__(self, item, get_predictions_func):
+        super(PredictionSelectLayoutAction, self).__init__(item)
+        self.get_predictions_func = get_predictions_func
 
     def getlabel(self):
-        if typestate is not None:
-            target = self.item['target']
-            predictions = typestate.getpredictions()
-            if target >= 0 and target < len(predictions):
-                return predictions[target]
+        predictions = self.get_predictions_func()
+        target = self.item.get('target', -1)
+        if 0 <= target < len(predictions):
+            return predictions[target]
         return ""
+
 
     def perform(self):
         if typestate is not None:
@@ -557,38 +561,17 @@ class PredictionSelectLayoutAction(Action):
 
 
 class Window(QDialog):
-    def __init__(self,layoutManager=None, configManager=None):
+    def __init__(self, layoutManager=None, configManager=None):
         super(Window, self).__init__()
         self.layoutManager = layoutManager
         self.configManager = configManager
-        self.config = self.configManager.get_config() 
-        logging.info(f"Window initialized with layout: {self.layoutManager.mainlayoutname}")        
-        self.actions = self.configManager.actions
-        self.keystrokes = self.configManager.keystrokes
-        self.keystrokemap = self.configManager.keystrokemap
-        self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.active, self.config, self)
-        
-        self.createIconGroupBox()
-        self.createActions()
-        self.createTrayIcon()
-        
-        self.trayIcon.activated.connect(self.iconActivated)
-
-        self.GOButton.clicked.connect(self.goForIt)
-        self.SaveButton.clicked.connect(self.saveSettings)
-
-        self.withSound.clicked.connect(self.updateAudioProperties)
-        mainLayout = QVBoxLayout()
-        mainLayout.addWidget(self.iconGroupBox)
-        self.setLayout(mainLayout)
-        
-        self.setIcon()
-        
-        self.trayIcon.show()
-
-        self.setWindowTitle("MorseWriter V2.1")
-        self.resize(400, 300)
-        
+        self.config = self.configManager.get_config()
+        self.typestate = None 
+        self.actions = {}
+        self.keystrokes = []
+        self.keystrokemap = {}
+        logging.info(f"Window initialized with layout: {self.layoutManager.main_layout_name}")
+        # just empty vars
         self.listenerThread = None
         self.currentCharacter = []
         self.lastKeyDownTime = None
@@ -601,18 +584,38 @@ class Window(QDialog):
         self.currentCharacter = []
         self.repeaton = False 
         self.repeatkey = None
-        logging.debug("Setting active layout to: %s", self.layoutManager.mainlayoutname)
-        self.layoutManager.set_active(self.layoutManager.mainlayoutname)
-        logging.debug("Active layout successfully set to: %s", self.layoutManager.get_active())
+        logging.debug("Setting active layout to: %s", self.layoutManager.main_layout_name)
+        self.layoutManager.set_active(self.layoutManager.main_layout_name)
+        logging.debug("Active layout successfully set to: %s", self.layoutManager.active_layout_name)
         # Check for specific layout types that may require special handling
-        if self.layoutManager.mainlayoutname == 'typing':
+        if self.layoutManager.main_layout_name == 'typing':
             self.typestate = TypeState()  # Assuming TypeState is defined elsewhere
         else:
             self.typestate = None
-        logging.debug(f"layout that is active is: {self.layoutManager.mainlayoutname} ")
-        self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.active, self.config)
+        logging.debug(f"layout that is active is: {self.layoutManager.main_layout_name} ")
+        self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.get_active_layout(), self.config)
         self.codeslayoutview.show()
        
+    def postInit(self):
+        # Initialize components that depend on actions being available
+        self.actions = self.configManager.actions
+        self.keystrokes = self.configManager.keystrokes
+        self.keystrokemap = self.configManager.keystrokemap
+        self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.get_active_layout(), self.config, self)
+        self.createIconGroupBox()
+        self.createActions()
+        self.createTrayIcon()
+        self.trayIcon.activated.connect(self.iconActivated)
+        self.GOButton.clicked.connect(self.goForIt)
+        self.SaveButton.clicked.connect(self.saveSettings)
+        self.withSound.clicked.connect(self.updateAudioProperties)
+        mainLayout = QVBoxLayout()
+        mainLayout.addWidget(self.iconGroupBox)
+        self.setLayout(mainLayout)
+        self.setIcon()
+        self.trayIcon.show()
+        self.setWindowTitle("MorseWriter V2.1")
+        self.resize(400, 300)
 
        
     def get_configured_keys(self):
@@ -689,7 +692,10 @@ class Window(QDialog):
         self.codeslayoutview = CodesLayoutViewWidget(new_layout, self.config, self)
         self.codeslayoutview.show()
 
-        
+    def getTypeStatePredictions(self):
+        if self.typestate:
+            return self.typestate.getpredictions()
+        return []
 
     def collect_config(self):
         config = {
@@ -1054,8 +1060,9 @@ class CodeRepresentation(QWidget):
         self.toggled = False
         self.updateView()
         
-    def item_label (self):
-        return self.item['_action'].getlabel() if self.item['_action'] is not None else ""
+    def item_label(self):
+        action = self.item.get('_action')
+        return action.getlabel() if action is not None else ""
     
     def codetocode(self, code):
         toReturn = code.replace('1', '.')
@@ -1212,21 +1219,33 @@ class CustomApplication(QApplication):
 
 
 if __name__ == '__main__':
-    configmanager = ConfigManager(os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.json"), default_config=DEFAULT_CONFIG)
-    layoutmanager = LayoutManager(os.path.join(os.path.dirname(os.path.realpath(__file__)), "layouts.json"), configmanager.actions)
-    
-    if layoutmanager.active is None:
-        raise AssertionError("layouts.json has no mainlayout")
-
     app = CustomApplication(sys.argv)
+    
     if not QSystemTrayIcon.isSystemTrayAvailable():
         QMessageBox.critical(None, "MorseWriter", "I couldn't detect any system tray on this system.")
         sys.exit(1)
-
+    
     QApplication.setQuitOnLastWindowClosed(False)
-    window = Window(layoutmanager,configmanager)
+
+    # Initialize managers
+    configmanager = ConfigManager(os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.json"), default_config=DEFAULT_CONFIG)
+    layoutmanager = LayoutManager(os.path.join(os.path.dirname(os.path.realpath(__file__)), "layouts.json"))
+
+    # Create main window
+    window = Window(layoutManager=layoutmanager, configManager=configmanager)
+
+    # Now that we have the window, initialize actions that may require window reference
+    actions = configmanager.initActions(window)
+    layoutmanager.set_actions(actions)
+
+    # Finish initializing the window if needed (after actions are available)
+    window.postInit()
+
+    # Show or hide the window based on the configuration
     if configmanager.config.get("autostart", False):
         window.hide()
     else:
         window.show()
+
+    # Start the application event loop
     sys.exit(app.exec_())
