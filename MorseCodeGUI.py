@@ -31,6 +31,9 @@ import icons_rc
 logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',
                     format='%(name)s - %(levelname)s - %(message)s')
 
+# If you want to the console
+# logging.basicConfig(level=logging.DEBUG,format='%(name)s - %(levelname)s - %(message)s')
+                    
 lastkeydowntime = -1
 
 pressagioconfig_file= os.path.join(os.path.dirname(os.path.realpath(__file__)), "res","morsewriter_pressagio.ini")
@@ -84,7 +87,7 @@ class ConfigManager:
                     self.convert_types(data)
                     return data
             except (FileNotFoundError, json.JSONDecodeError, ValueError) as e:
-                print(f"Error loading configuration: {e}")
+                logging.warning(f"Error loading configuration: {e}")
         return self.default_config.copy()
         
 
@@ -106,7 +109,7 @@ class ConfigManager:
             with open(self.config_file, "w") as file:
                 json.dump(self.config, file, indent=4)
         except Exception as e:
-            print(f"Error saving configuration: {e}")
+            logging.warning(f"Error saving configuration: {e}")
 
     def get_config(self):
         return self.config
@@ -294,22 +297,24 @@ class KeyListenerThread(QThread):
     def __init__(self, configured_keys=None, parent=None):
         super(KeyListenerThread, self).__init__(parent)
         self.configured_keys = configured_keys or []
-        print("Initialized with keys:", self.configured_keys)
+        logging.debug("Initialized with keys:  %s", self.configured_keys)
         self.running = True
     
     def run(self):
         # Start the listener with this thread's on_press and on_release methods
-        with Listener(on_press=self.on_press, on_release=self.on_release, suppress=True) as listener:
+        #with Listener(on_press=self.on_press, on_release=self.on_release, suppress=True) as listener:
+            #listener.join()
+        with Listener(on_press=self.on_press, on_release=self.on_release) as listener:
             listener.join()
 
     def on_press(self, key):
-        print(f"Pressed: {key}")
+        logging.debug(f"Pressed: {key}")
         # Check if key is in configured keys; if not, ignore it
         if self.configured_keys and key not in self.configured_keys:
-            print(f"Ignoring key: {key}")
+            logging.debug(f"Ignoring key: {key}")
             return
         try:
-            print("Handling key:", key)
+            logging.debug("Handling key: %s", key)
             # Emit key.char if possible, otherwise emit key's string representation
             if hasattr(key, 'char') and key.char:
                 self.keyEvent.emit(key.char, True)
@@ -359,10 +364,10 @@ class LayoutManager:
                 action_factory = self.actions[action_name]
                 try:
                     item['_action'] = action_factory(item)
-                    print(f"Creating action for {action_name} with item: {item}")
+                    logging.debug(f"Creating action for {action_name} with item: {item}")
                 except Exception as e:
-                    print(f"Failed to create action for {action_name} with item: {item}")
-                    print(f"Error: {str(e)}")
+                    logging.critical(f"Failed to create action for {action_name} with item: {item}")
+                    logging.critical(f"Error: {str(e)}")
             else:
                 item['_action'] = None
         return layout
@@ -394,7 +399,7 @@ def getPossibleCombos(currentCharacter):
     for action in normalmapping:
         if (len(action) >= len(x) and action[:len(x)] == x):
             possibleactions.append(action)
-    print("possible: " + str(possibleactions))
+    logging.debug("possible: %s", str(possibleactions))
 
 
 class Action (object):
@@ -458,17 +463,17 @@ class ActionLegacy (Action):
         if self.key and self.key in action_map:
             action_map[self.key]()
         else:
-            print(f"No action defined for key: {self.key}")
+            logging.debug(f"No action defined for key: {self.key}")
     
     def handleRepeatMode(self):
         global repeaton, myConfig
         if repeaton:
             if self.config.get('debug', False):
-                print("repeat OFF")
+                logging.info("repeat OFF")
             repeaton = False
         else:
             if self.config.get('debug', False):
-                print("repeat ON")
+                logging.info("repeat ON")
             repeaton = True
     
 
@@ -547,7 +552,7 @@ class Window(QDialog):
         self.layoutManager = layoutManager
         self.configManager = configManager
         self.config = self.configManager.get_config() 
-        print(f"Window initialized with layout: {self.layoutManager.mainlayoutname}")        
+        logging.info(f"Window initialized with layout: {self.layoutManager.mainlayoutname}")        
         self.actions = self.configManager.actions
         self.keystrokes = self.configManager.keystrokes
         self.keystrokemap = self.configManager.keystrokemap
@@ -616,26 +621,26 @@ class Window(QDialog):
             "RSHIFT": Key.shift_r, "LSHIFT": Key.shift_l,
             "LALT": Key.alt_l
         }
-        print(f"Available keys in pynputKeys: {list(pynputKeys.keys())}")  # Print available keys
+        logging.debug(f"Available keys in pynputKeys: {list(pynputKeys.keys())}")  # Print available keys
 
         try:
             key_names = self.get_configured_keys()  # Retrieve configured key names
-            print(f"Configured key names: {key_names}")
+            logging.debug(f"Configured key names: {key_names}")
             configured_keys = [pynputKeys[key.upper()] for key in key_names if key.upper() in pynputKeys]
-            print(f"Configured pynput keys: {configured_keys}")
+            logging.debug(f"Configured pynput keys: {configured_keys}")
     
             if not configured_keys:  # If no valid keys are configured, log and avoid starting the thread
-                print("No valid keys configured for KeyListenerThread.")
+                logging.warning("No valid keys configured for KeyListenerThread.")
                 return
     
             if not self.listenerThread:
                 self.listenerThread = KeyListenerThread(configured_keys=configured_keys)
                 self.listenerThread.keyEvent.connect(self.handle_key_event)
                 self.listenerThread.start()
-            print("KeyListenerThread started successfully.")
+            logging.debug("KeyListenerThread started successfully.")
         except Exception as e:
-            print(f"Failed to start KeyListenerThread due to error: {str(e)}")
-            print(f"Problematic keys: {[key for key in key_names if key.upper() not in pynputKeys]}")
+            logging.critical(f"Failed to start KeyListenerThread due to error: {str(e)}")
+            logging.critical(f"Problematic keys: {[key for key in key_names if key.upper() not in pynputKeys]}")
 
     
     def updateAudioProperties(self):
@@ -897,14 +902,14 @@ class Window(QDialog):
             myConfig['off'] = True
     
     def stopIt(self):
-        print("Stopping components...")
+        logging.debug("Stopping components...")
         if self.listenerThread is not None:
             self.listenerThread.stop_listener()
             self.listenerThread.wait()
         if self.codeslayoutview is not None:
             self.codeslayoutview.hide()
             self.codeslayoutview = None
-        print("All components stopped.")
+        logging.debug("All components stopped.")
 
     def backToSettings (self):
         self.showNormal()
@@ -929,17 +934,17 @@ class Window(QDialog):
         self.trayIcon.setContextMenu(self.trayIconMenu)
         
     def handle_key_event(self, key, is_press):
-        print(f"Event received: Key={key}, Pressed={is_press}")
+        logging.debug(f"Event received: Key={key}, Pressed={is_press}")
         try:
             if is_press:
                 self.on_press(key)
             else:
                 self.on_release(key)
         except Exception as e:
-            print(f"Error handling key event: {e}")
+            logging.warning(f"Error handling key event: {e}")
             
     def handle_key_event(self, key, is_press):
-        print(f"Key {key} pressed: {is_press}")
+        logging.debug(f"Key {key} pressed: {is_press}")
 
 
     
@@ -947,9 +952,9 @@ class Window(QDialog):
         try:
             if self.lastKeyDownTime is None:  # Start timing the key press
                 self.lastKeyDownTime = time.time()
-            print(f"Key pressed: {key}")
+            logging.debug(f"Key pressed: {key}")
         except Exception as e:
-            print(f"Error on key press: {e}")
+            logging.warning(f"Error on key press: {e}")
     
     def on_release(self, key):
         try:
@@ -962,9 +967,9 @@ class Window(QDialog):
                 else:
                     self.addDah()
                 self.startEndCharacterTimer()
-                print(f"Key released: {key}, duration: {duration}ms")
+                logging.debug(f"Key released: {key}, duration: {duration}ms")
         except Exception as e:
-            print(f"Error on key release: {e}")
+            logging.warning(f"Error on key release: {e}")
 
     def addDit(self):
         self.currentCharacter.append(1)  # Assuming 1 represents Dit
@@ -996,7 +1001,7 @@ class Window(QDialog):
             if action:  # Check if action is not None
                 action.perform()
         else:
-            print("No action found for the given morse code:", morse_code)
+            logging.info("No action found for the given morse code:", morse_code)
     
         self.currentCharacter = []
 
@@ -1005,8 +1010,8 @@ class CodeRepresentation(QWidget):
     def __init__(self, parent, code, item, c1, config):
         super(CodeRepresentation, self).__init__(None) 
         self.config = config
-        print("Debug - Item:", item)
-        print("Debug - Config:", config)
+        logging.debug("Debug - Item: %s", item)
+        logging.debug("Debug - Config: %s", config)
         vlayout = QVBoxLayout()
         self.item = item
         self.character = QLabel()
@@ -1121,7 +1126,7 @@ class CodesLayoutViewWidget(QWidget):
          
 
     def adjustPosition(self):
-        #print("Current config:", self.config)
+        #logging.debug("Current config: %s", self.config)
         ssize = QApplication.desktop().screenGeometry()
         size = self.frameSize()
         # Explicit conversion to int to ensure no float values slip through
@@ -1183,7 +1188,7 @@ class CodesLayoutViewWidget(QWidget):
 
 class CustomApplication(QApplication):
     def notify(self, receiver, event):
-        #print(f"Event: {event.type()}, Receiver: {receiver.__class__.__name__}")
+        #logging.debug(f"Event: {event.type()}, Receiver: {receiver.__class__.__name__}")
         return super().notify(receiver, event)
 
 
