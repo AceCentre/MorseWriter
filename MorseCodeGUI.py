@@ -3,7 +3,6 @@ import configparser
 import json
 import logging
 import os
-import pdb
 import sys
 import threading
 import time
@@ -1018,17 +1017,24 @@ class Window(QDialog):
 
     def endCharacter(self):
         morse_code = "".join(map(str, self.currentCharacter))
-        # Find the corresponding item based on morse_code
-        item = next((item for item in self.layoutManager.active['items'] if item.get('code') == morse_code), None)
-        
-        if item and '_action' in item:
-            action = item['_action']  # Ensure the action is retrieved correctly
-            if action:  # Check if action is not None
-                action.perform()
-        else:
-            logging.info("No action found for the given morse code:", morse_code)
+        # Find the corresponding item based on morse_code using the refactored LayoutManager
+        try:
+            active_layout = self.layoutManager.get_active_layout()
+            items = active_layout.get('items', [])
+            item = next((item for item in items if item.get('code') == morse_code), None)
+            
+            if item and '_action' in item:
+                action = item['_action']  # Ensure the action is retrieved correctly
+                if action:  # Check if action is not None
+                    action.perform()
+                logging.info(f"Action performed for morse code: {morse_code}")
+            else:
+                logging.info(f"No action found for the given morse code: {morse_code}")
+        except Exception as e:
+            logging.error(f"Failed to perform action for morse code: {morse_code}. Error: {str(e)}")
     
         self.currentCharacter = []
+
 
 
 class CodeRepresentation(QWidget):
