@@ -28,11 +28,10 @@ import pressagio
 import icons_rc  
 
 # Configure basic logger
-logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',
-                    format='%(name)s - %(levelname)s - %(message)s')
+#logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',format='%(name)s - %(levelname)s - %(message)s')
 
 # If you want to the console
-# logging.basicConfig(level=logging.DEBUG,format='%(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG,format='%(name)s - %(levelname)s - %(message)s')
                     
 lastkeydowntime = -1
 
@@ -258,11 +257,11 @@ class ConfigManager:
             stroke = KeyStroke(key, label, key_code, character)
             keystrokes.append(stroke)
             keystrokemap[key] = stroke
-            # Initialize actions, assuming ActionLegacy takes label, key_code, etc., and an additional argument `arg`.
-            actions[key] = lambda item, arg=arg: ActionLegacy(item=item, arg=arg, label=label, key=key_code)
+            actions[key] = (lambda item, label=label, key_code=key_code, arg=arg: 
+                ActionLegacy(item=item, arg=arg, label=label, key=key_code))
             
         # Special actions
-        actions["PREDICTION_SELECT"] = lambda item: ChangeLayoutAction(item, window),
+        actions["CHANGELAYOUT"] = lambda item: ChangeLayoutAction(item, window),
         actions["PREDICTION_SELECT"] = PredictionSelectLayoutAction
         actions["KEYSTROKE"] = lambda item: ActionKeyStroke(item, item['key'])
     
@@ -345,7 +344,7 @@ class PressagioCallback(pressagio.callback.Callback):
             
 class LayoutManager:
     def __init__(self, fn, actions):
-        self.actions = actions        
+        self.actions = actions
         with open(fn, "r") as f:
             data = json.load(f)
         self.layouts = {k: self._layout_import(v) for k, v in data['layouts'].items()}
@@ -353,7 +352,8 @@ class LayoutManager:
         if self.active is None:
             raise ValueError("No main layout found or the specified main layout is not defined in layouts.json.")
         self.mainlayout = self.active
-        self.mainlayoutname = data['mainlayout']
+        self.mainlayoutname = data['mainlayout']  # remains static as the initial layout
+        self.activelayoutname = data['mainlayout']  # dynamic, changes with set_active
 
     def _layout_import(self, layout):
         if 'column_len' not in layout:
@@ -372,9 +372,19 @@ class LayoutManager:
                 item['_action'] = None
         return layout
     
-    def set_active(self, layout):
-        """Sets the active layout."""
-        self.active = layout
+    def set_active(self, layout_name):
+        """Sets the active layout by name and updates activelayoutname."""
+        if layout_name in self.layouts:
+            self.active = self.layouts[layout_name]
+            self.activelayoutname = layout_name
+            logging.info(f"Active layout set to {layout_name}")
+        else:
+            raise ValueError("Specified layout does not exist.")
+        
+    def get_active(self):
+        """Returns the name of the currently active layout."""
+        return self.activelayoutname
+
 
 def moveMouse(x_delta, y_delta):
     current_pos = mouse_controller.position
@@ -510,10 +520,10 @@ class ChangeLayoutAction(Action):
     def perform(self):
         target_layout = self.item.get('target')
         if target_layout and target_layout in self.window.layoutManager.layouts:
-            self.window.layoutManager.set_active(self.window.layoutManager.layouts[target_layout])
+            # Use the layout name to set the active layout
+            self.window.layoutManager.set_active(target_layout)
         else:
             raise ValueError(f"Layout '{target_layout}' not found")
-
 
 class PredictionSelectLayoutAction(Action):
     def __init__(self, item):
@@ -591,15 +601,19 @@ class Window(QDialog):
         self.currentCharacter = []
         self.repeaton = False 
         self.repeatkey = None
-        self.layoutManager.set_active(self.layoutManager.mainlayout)
+        logging.debug("Setting active layout to: %s", self.layoutManager.mainlayoutname)
+        self.layoutManager.set_active(self.layoutManager.mainlayoutname)
+        logging.debug("Active layout successfully set to: %s", self.layoutManager.get_active())
         # Check for specific layout types that may require special handling
         if self.layoutManager.mainlayoutname == 'typing':
             self.typestate = TypeState()  # Assuming TypeState is defined elsewhere
         else:
             self.typestate = None
+        logging.debug(f"layout that is active is: {self.layoutManager.mainlayoutname} ")
         self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.active, self.config)
         self.codeslayoutview.show()
        
+
        
     def get_configured_keys(self):
         key_names = []
@@ -658,16 +672,23 @@ class Window(QDialog):
         self.startKeyListener()
         
     def changeLayout(self, layout_name):
-        new_layout = self.layoutManager.layouts.get(layout_name)
-        if not new_layout:
+        # Check if the layout exists in the layoutManager by name
+        if layout_name not in self.layoutManager.layouts:
             raise ValueError("Requested layout does not exist")
-        self.layoutManager.set_active(new_layout)
+        
+        # Use the layout name to set the active layout
+        self.layoutManager.set_active(layout_name)
+    
+        # Retrieve the new layout object now that it's confirmed to exist and is active
+        new_layout = self.layoutManager.layouts[layout_name]
+    
         # Reinitialize the layout view widget
         if self.codeslayoutview:
             self.codeslayoutview.setParent(None)
             self.codeslayoutview.deleteLater()  # Properly delete the widget
         self.codeslayoutview = CodesLayoutViewWidget(new_layout, self.config, self)
         self.codeslayoutview.show()
+
         
 
     def collect_config(self):
@@ -701,7 +722,8 @@ class Window(QDialog):
             self.hide()
         self.config = self.collect_config()
         self.init()  # Assume this initializes key listening etc
-        self.startKeyListener()
+        ## HELLO! WE HAVE MUTED THIS AS IT CRASHES EVERYTHING!
+        #self.startKeyListener()
 
 
     def closeEvent(self, event):
@@ -943,11 +965,7 @@ class Window(QDialog):
         except Exception as e:
             logging.warning(f"Error handling key event: {e}")
             
-    def handle_key_event(self, key, is_press):
-        logging.debug(f"Key {key} pressed: {is_press}")
 
-
-    
     def on_press(self, key):
         try:
             if self.lastKeyDownTime is None:  # Start timing the key press
@@ -1010,8 +1028,8 @@ class CodeRepresentation(QWidget):
     def __init__(self, parent, code, item, c1, config):
         super(CodeRepresentation, self).__init__(None) 
         self.config = config
-        logging.debug("Debug - Item: %s", item)
-        logging.debug("Debug - Config: %s", config)
+        #logging.debug("CodeRepresentation - Item: %s", item)
+        #logging.debug("CodeRepresentation - Config: %s", config)
         vlayout = QVBoxLayout()
         self.item = item
         self.character = QLabel()
@@ -1158,6 +1176,7 @@ class CodesLayoutViewWidget(QWidget):
         perrow = layout['column_len']
     
         for item in layout['items']:
+            logging.debug(f"LAYOUT Item: {item}")
             if 'emptyspace' not in item or not item['emptyspace']:
                 coderep = CodeRepresentation(None, item['code'], item, "Green",self.config)
                 if isinstance(item['_action'], ActionKeyStroke):
