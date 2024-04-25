@@ -258,15 +258,16 @@ class ConfigManager:
         actions = {}
         for key, (label, key_code, character, arg) in self.key_data.items():
             # Pass current loop variables as default values to ensure correct capturing
-            actions[key] = (lambda item, label=label, key_code=key_code, arg=arg: 
-                            ActionLegacy(item=item, arg=arg, label=label, key=key_code))
-    
+            action_key = key.upper()
+            actions[action_key] = lambda item, lbl=label, kc=key_code, char=character, a=arg: ActionKeyStroke({'label': lbl, 'key_code': kc, 'character': char, 'arg': a}, kc)
+            
         # Define special actions, making sure to correctly handle lambda capturing
         actions["CHANGELAYOUT"] = lambda item, window=window: ChangeLayoutAction(item, window)
         #actions["PREDICTION_SELECT"] = lambda item: PredictionSelectLayoutAction(item)
         actions["PREDICTION_SELECT"] = lambda item, window=window: PredictionSelectLayoutAction(
                 item, get_predictions_func=window.getTypeStatePredictions)
-        actions["KEYSTROKE"] = lambda item, key_data=self.key_data: ActionKeyStroke(item, key_data[item['action']])
+        actions["KEYSTROKE"] = lambda item, key_data=self.key_data: ActionKeyStroke(item, key_data[item['action'].upper()])
+
     
         return actions
 
@@ -489,7 +490,7 @@ class ActionLegacy (Action):
         if self.key and self.key in action_map:
             action_map[self.key]()
         else:
-            logging.debug(f"No action defined for key: {self.key}")
+            logging.debug(f"[ActionLegacy-perform] No action defined for key: {self.key}")
     
     def handleRepeatMode(self):
         global repeaton
@@ -513,19 +514,35 @@ class KeyStroke (object):
 class ActionKeyStroke(Action):
     def __init__(self, item, key, toggle_action=False):
         super(ActionKeyStroke, self).__init__(item)
-        self.key = get_pynput_key(key)  # Ensure this is a pynput compatible key
+        self.key = key  # if already KeyCode no need to convert
+        self.key_name = key.char if isinstance(key, KeyCode) else key  # Handle both cases
+        self.label = item.get('label', item.get('action'))
         self.toggle_action = toggle_action
 
+    @property
+    def name(self):
+        return self.key_name
+    
+    def getlabel(self):
+        # Returns the label associated with this action, if any
+        return self.label
+
+
     def perform(self):
-        if self.toggle_action:
-            current_state = getKeyStrokeState(self.key)  # Define this function based on your app's logic
-            if current_state['down']:
-                keyboard_controller.release(self.key)
+        logging.debug(f"[ActionKeyStroke] Key to press/release: {self.key}, type: {type(self.key)}")
+        try:
+            if self.toggle_action:
+                current_state = getKeyStrokeState(self.key)  # Ensure this function is properly defined
+                if current_state['down']:
+                    keyboard_controller.release(self.key)
+                else:
+                    keyboard_controller.press(self.key)
             else:
                 keyboard_controller.press(self.key)
-        else:
-            keyboard_controller.press(self.key)
-            keyboard_controller.release(self.key)
+                keyboard_controller.release(self.key)
+        except Exception as e:
+            logging.error(f"Error during key press/release: {e}")
+
 
 
 class ChangeLayoutAction(Action):
@@ -964,23 +981,23 @@ class Window(QDialog):
         self.trayIcon.setContextMenu(self.trayIconMenu)
         
     def handle_key_event(self, key, is_press):
-        logging.debug(f"Event received: Key={key}, Pressed={is_press}")
+        logging.debug(f"[handle_key_event] Event received: Key={key}, Pressed={is_press}")
         try:
             if is_press:
                 self.on_press(key)
             else:
                 self.on_release(key)
         except Exception as e:
-            logging.warning(f"Error handling key event: {e}")
+            logging.warning(f"[handle_key_event] Error handling key event: {e}")
             
 
     def on_press(self, key):
         try:
             if self.lastKeyDownTime is None:  # Start timing the key press
                 self.lastKeyDownTime = time.time()
-            logging.debug(f"Key pressed: {key}")
+            logging.debug(f"[on_press] Key pressed: {key}")
         except Exception as e:
-            logging.warning(f"Error on key press: {e}")
+            logging.warning(f"[on_press] Error on key press: {e}")
     
     def on_release(self, key):
         try:
@@ -993,9 +1010,9 @@ class Window(QDialog):
                 else:
                     self.addDah()
                 self.startEndCharacterTimer()
-                logging.debug(f"Key released: {key}, duration: {duration}ms")
+                logging.debug(f"[on_release] Key released: {key}, duration: {duration}ms")
         except Exception as e:
-            logging.warning(f"Error on key release: {e}")
+            logging.warning(f"[on_release] Error on key release: {e}")
 
     def addDit(self):
         self.currentCharacter.append(1)  # Assuming 1 represents Dit
@@ -1016,22 +1033,25 @@ class Window(QDialog):
         self.endCharacterTimer.start(int(self.config['minLetterPause']))
 
     def endCharacter(self):
-        morse_code = "".join(map(str, self.currentCharacter))
-        # Find the corresponding item based on morse_code using the refactored LayoutManager
+        morse_code = "".join(map(str, self.currentCharacter)).upper()  # Convert to upper case to match action keys
+    
         try:
             active_layout = self.layoutManager.get_active_layout()
             items = active_layout.get('items', [])
             item = next((item for item in items if item.get('code') == morse_code), None)
-            
+    
             if item and '_action' in item:
-                action = item['_action']  # Ensure the action is retrieved correctly
-                if action:  # Check if action is not None
+                action = item['_action']
+                if action:
+                    logging.debug(f"[endCharacter] Performing action for key: {action.key}, action type: {type(action)}")
                     action.perform()
-                logging.info(f"Action performed for morse code: {morse_code}")
+                    logging.info(f"[endCharacter] Action performed for Morse code: {morse_code}")
+                else:
+                    logging.error(f"[endCharacter] Action defined but not executable for Morse code: {morse_code}")
             else:
-                logging.info(f"No action found for the given morse code: {morse_code}")
+                logging.error(f"[endCharacter] No action found for Morse code: {morse_code}")
         except Exception as e:
-            logging.error(f"Failed to perform action for morse code: {morse_code}. Error: {str(e)}")
+            logging.error(f"[endCharacter] Failed to perform action for Morse code: {morse_code}. Error: {str(e)}")
     
         self.currentCharacter = []
 
@@ -1045,7 +1065,7 @@ class CodeRepresentation(QWidget):
         #logging.debug("CodeRepresentation - Config: %s", config)
         vlayout = QVBoxLayout()
         self.item = item
-        self.character = QLabel()
+        self.character = QLabel(self.item['_action'].getlabel())
         self.character.setGeometry(10, 10, 10, 10)
         self.character.setContentsMargins(0, 0, 0, 0)
         self.character.setAlignment(Qt.AlignTop)        
@@ -1064,6 +1084,7 @@ class CodeRepresentation(QWidget):
      #   self.show()
         self.disabledchars = 0
         self.is_enabled = True
+        self.character.setText(item['_action'].getlabel())
         self.toggled = False
         self.updateView()
         
@@ -1192,17 +1213,22 @@ class CodesLayoutViewWidget(QWidget):
         for item in layout['items']:
             logging.debug(f"LAYOUT Item: {item}")
             if 'emptyspace' not in item or not item['emptyspace']:
-                coderep = CodeRepresentation(None, item['code'], item, "Green",self.config)
+                coderep = CodeRepresentation(None, item['code'], item, "Green", self.config)
+                # Check if '_action' is an instance of ActionKeyStroke
                 if isinstance(item['_action'], ActionKeyStroke):
-                    self.keystroke_crs_map[item['_action'].key.name] = coderep
+                    # Use the .name property from ActionKeyStroke
+                    label = item['_action'].label 
+                    key_name = item['_action'].name
+                    self.keystroke_crs_map[key_name] = coderep
                 self.crs[item['code']] = coderep
                 hlayout.addWidget(coderep)
             x += 1
-            if x > perrow:
+            if x >= perrow:
                 x = 0
                 hlayout = QHBoxLayout()
                 hlayout.setContentsMargins(0, 0, 0, 0)
                 self.vlayout.addLayout(hlayout)
+
     
     def Dit(self):
         for item in self.crs.values():
@@ -1218,6 +1244,20 @@ class CodesLayoutViewWidget(QWidget):
             
     def closeEvent(self, event):
         window.backToSettings()
+
+#THIS WONT WQORK! OOPs
+def getKeyStrokeState (name):
+    global keystrokes_state
+    state = keystrokes_state.get(name, None)
+    if state is None:
+        state = {"down":False}
+        keystroke = keystrokemap[name]
+        keystate = unpack("H", pack("h", win32api.GetKeyState(keystroke.keywin32)))[0]
+        state['down'] = (keystate & 1<<15) != 0
+        if name == "CAPSLOCK":
+            state['locked'] = (keystate & 1) == 1
+        keystrokes_state[name] = state
+    return state
 
 class CustomApplication(QApplication):
     def notify(self, receiver, event):
