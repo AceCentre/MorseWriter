@@ -17,10 +17,9 @@ from PyQt5.QtWidgets import (QAction, QCheckBox, QComboBox, QDialog, QGridLayout
                              QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox,
                              QPushButton, QRadioButton, QSystemTrayIcon, QVBoxLayout,
                              QWidget, QApplication, QMenu)
-from pynput.keyboard import Controller as KeyboardController, Listener, Key, KeyCode
-from pynput.mouse import Controller as MouseController, Button
 from nava import play
-
+import keyboard
+import mouse
 # Local application/library specific imports
 import pressagio.callback
 import pressagio
@@ -38,8 +37,6 @@ pressagioconfig_file= os.path.join(os.path.dirname(os.path.realpath(__file__)), 
 pressagioconfig = configparser.ConfigParser()
 pressagioconfig.read(pressagioconfig_file)
 
-mouse_controller = MouseController()
-keyboard_controller = KeyboardController()
 keystrokes_state = {}
 currentX = 0
 currentY = 0
@@ -72,136 +69,136 @@ DEFAULT_CONFIG = {
 class ConfigManager:
     def __init__(self, config_file=None, default_config=DEFAULT_CONFIG):
         self.key_data = {
-            "A": ('a', KeyCode.from_char('a'), 'a', None),
-            "B": ('b', KeyCode.from_char('b'), 'b', None),
-            "C": ('c', KeyCode.from_char('c'), 'c', None),
-            "D": ('d', KeyCode.from_char('d'), 'd', None),
-            "E": ('e', KeyCode.from_char('e'), 'e', None),
-            "F": ('f', KeyCode.from_char('f'), 'f', None),
-            "G": ('g', KeyCode.from_char('g'), 'g', None),
-            "H": ('h', KeyCode.from_char('h'), 'h', None),
-            "I": ('i', KeyCode.from_char('i'), 'i', None),
-            "J": ('j', KeyCode.from_char('j'), 'j', None),
-            "K": ('k', KeyCode.from_char('k'), 'k', None),
-            "L": ('l', KeyCode.from_char('l'), 'l', None),
-            "M": ('m', KeyCode.from_char('m'), 'm', None),
-            "N": ('n', KeyCode.from_char('n'), 'n', None),
-            "O": ('o', KeyCode.from_char('o'), 'o', None),
-            "P": ('p', KeyCode.from_char('p'), 'p', None),
-            "Q": ('q', KeyCode.from_char('q'), 'q', None),
-            "R": ('r', KeyCode.from_char('r'), 'r', None),
-            "S": ('s', KeyCode.from_char('s'), 's', None),
-            "T": ('t', KeyCode.from_char('t'), 't', None),
-            "U": ('u', KeyCode.from_char('u'), 'u', None),
-            "V": ('v', KeyCode.from_char('v'), 'v', None),
-            "W": ('w', KeyCode.from_char('w'), 'w', None),
-            "X": ('x', KeyCode.from_char('x'), 'x', None),
-            "Y": ('y', KeyCode.from_char('y'), 'y', None),
-            "Z": ('z', KeyCode.from_char('z'), 'z', None),
-            "ONE": ('1', KeyCode.from_char('1'), '1', None),
-            "TWO": ('2', KeyCode.from_char('2'), '2', None),
-            "THREE": ('3', KeyCode.from_char('3'), '3', None),
-            "FOUR": ('4', KeyCode.from_char('4'), '4', None),
-            "FIVE": ('5', KeyCode.from_char('5'), '5', None),
-            "SIX": ('6', KeyCode.from_char('6'), '6', None),
-            "SEVEN": ('7', KeyCode.from_char('7'), '7', None),
-            "EIGHT": ('8', KeyCode.from_char('8'), '8', None),
-            "NINE": ('9', KeyCode.from_char('9'), '9', None),
-            "ZERO": ('0', KeyCode.from_char('0'), '0', None),
-            "DOT": ('.', KeyCode.from_char('.'), '.', None),
-            "COMMA": (',', KeyCode.from_char(','), ',', None),
-            "QUESTION": ('?', KeyCode.from_char('/'), '?', None),
-            "EXCLAMATION": ('!', KeyCode.from_char('1'), '!', None),
-            "COLON": (':', KeyCode.from_char(';'), ':', None),
-            "SEMICOLON": (';', KeyCode.from_char(';'), ';', None),
-            "AT": ('@', KeyCode.from_char('2'), '@', None),
-            "HASH": ('#', KeyCode.from_char('3'), '#', None),
-            "DOLLAR": ('$', KeyCode.from_char('4'), '$', None),
-            "PERCENT": ('%', KeyCode.from_char('5'), '%', None),
-            "AMPERSAND": ('&', KeyCode.from_char('7'), '&', None),
-            "STAR": ('*', KeyCode.from_char('*'), '*', None),
-            "PLUS": ('+', KeyCode.from_char('='), '+', None),
-            "MINUS": ('-', KeyCode.from_char('-'), '-', None),
-            "EQUALS": ('=', KeyCode.from_char('='), '=', None),
-            "FSLASH": ('/', KeyCode.from_char('/'), '/', None),
-            "BSLASH": ('\\', KeyCode.from_char('\\'), '\\', None),
-            "SINGLEQUOTE": ("'", KeyCode.from_char("'"), "'", None),
-            "DOUBLEQUOTE": ('"', KeyCode.from_char('"'), '"', None),
-            "OPENBRACKET": ('(', KeyCode.from_char('9'), '(', None),
-            "CLOSEBRACKET": (')', KeyCode.from_char('0'), ')', None),
-            "LESSTHAN": ('<', KeyCode.from_char(','), '<', None),
-            "MORETHAN": ('>', KeyCode.from_char('.'), '>', None),
-            "CIRCONFLEX": ('^', KeyCode.from_char('6'), '^', None),
-            "ENTER": ('ENTER', KeyCode.from_char('Key.enter'), '\n', None),
-            "SPACE": ('space', KeyCode.from_char('Key.space'), ' ', None),
-            "BACKSPACE": ('bckspc', KeyCode.from_char('Key.backspace'), '\x08', None),
-            "TAB": ('tab', KeyCode.from_char('Key.tab'), '\t', None),
-            "PAGEUP": ('pageup', KeyCode.from_char('Key.page_up'), None, None),
-            "PAGEDOWN": ('pagedwn', KeyCode.from_char('Key.page_down'), None, None),
-            "LEFTARROW": ('left', KeyCode.from_char('Key.left'), None, None),
-            "RIGHTARROW": ('right', KeyCode.from_char('Key.right'), None, None),
-            "UPARROW": ('up', KeyCode.from_char('Key.up'), None, None),
-            "DOWNARROW": ('down', KeyCode.from_char('Key.down'), None, None),
-            "ESCAPE": ('esc', KeyCode.from_char('Key.esc'), None, None),
-            "HOME": ('home', KeyCode.from_char('Key.home'), None, None),
-            "END": ('end', KeyCode.from_char('Key.end'), None, None),
-            "DELETE": ('del', KeyCode.from_char('Key.delete'), None, None),
-            "SHIFT": ('shift', KeyCode.from_char('Key.shift'), None, None),
-            "RSHIFT": ('rshift', KeyCode.from_char('Key.rshift'), None, None),
-            "LSHIFT": ('lshift', KeyCode.from_char('Key.lshift'), None, None),
-            "CTRL": ('ctrl', KeyCode.from_char('Key.ctrl'), None, None),
-            "RCTRL": ('rctrl', KeyCode.from_char('Key.rctrl'), None, None),
-            "LCTRL": ('lctrl', KeyCode.from_char('Key.lctrl'), None, None),
-            "ALT": ('alt', KeyCode.from_char('Key.alt'), None, None),
-            "WINDOWS": ('win', KeyCode.from_char('Key.cmd'), None, None),
-            "CAPSLOCK": ('caps', KeyCode.from_char('Key.caps_lock'), None, None),
-            "F1": ('F1', KeyCode.from_char('Key.f1'), None, None),
-            "F2": ('F2', KeyCode.from_char('Key.f2'), None, None),
-            "F3": ('F3', KeyCode.from_char('Key.f3'), None, None),
-            "F4": ('F4', KeyCode.from_char('Key.f4'), None, None),
-            "F5": ('F5', KeyCode.from_char('Key.f5'), None, None),
-            "F6": ('F6', KeyCode.from_char('Key.f6'), None, None),
-            "F7": ('F7', KeyCode.from_char('Key.f7'), None, None),
-            "F8": ('F8', KeyCode.from_char('Key.f8'), None, None),
-            "F9": ('F9', KeyCode.from_char('Key.f9'), None, None),
-            "F10": ('F10', KeyCode.from_char('Key.f10'), None, None),
-            "F11": ('F11', KeyCode.from_char('Key.f11'), None, None),
-            "F12": ('F12', KeyCode.from_char('Key.f12'), None, None),
-            "REPEATMODE": ('repeat', None, None, 0),
-            "SOUND": ('snd', None, None, 8),
-            "CODESET": ('code', None, None, 9),
-            "MOUSERIGHT5": ('ms right 5', None, None, 2),
-            "MOUSEUP5": ('ms up 5', None, None, 3),
-            "MOUSECLICKLEFT": ('ms clkleft', None, None, 4),
-            "MOUSEDBLCLICKLEFT": ('ms dblclkleft', None, None, 5),
-            "MOUSECLKHLDLEFT": ('ms hldleft', None, None, 6),
-            "MOUSEUPLEFT5": ('ms leftup 5', None, None, 7),
-            "MOUSEDOWNLEFT5": ('ms leftdown 5', None, None, 8),
-            "MOUSERELEASEHOLD": ('ms release', None, None, 9),
-            "MOUSELEFT5": ('ms left 5', None, None, 0),
-            "MOUSEDOWN5": ('ms down 5', None, None, 1),
-            "MOUSECLICKRIGHT": ('ms clkright', None, None, 2),
-            "MOUSEDBLCLICKRIGHT": ('ms dblclkright', None, None, 3),
-            "MOUSECLKHLDRIGHT": ('ms hldright', None, None, 4),
-            "MOUSEUPRIGHT5": ('ms rightup 5', None, None, 5),
-            "MOUSEDOWNRIGHT5": ('ms rightdown 5', None, None, 6),
-            "NORMALMODE": ('normal mode', None, None, 7),
-            "MOUSEUP40": ('ms up 40', None, None, 8),
-            "MOUSEUP250": ('ms up 250', None, None, 9),
-            "MOUSEDOWN40": ('ms down 40', None, None, 0),
-            "MOUSEDOWN250": ('ms down 250', None, None, 1),
-            "MOUSELEFT40": ('ms left 40', None, None, 2),
-            "MOUSELEFT250": ('ms left 250', None, None, 3),
-            "MOUSERIGHT40": ('ms right 40', None, None, 4),
-            "MOUSERIGHT250": ('ms right 250', None, None, 5),
-            "MOUSEUPLEFT40": ('ms leftup 40', None, None, 6),
-            "MOUSEUPLEFT250": ('ms leftup 250', None, None, 7),
-            "MOUSEDOWNLEFT40": ('ms leftdown 40', None, None, 8),
-            "MOUSEDOWNLEFT250": ('ms leftdown 250', None, None, 9),
-            "MOUSEUPRIGHT40": ('ms rightup 40', None, None, 0),
-            "MOUSEUPRIGHT250": ('ms rightup 250', None, None, 1),
-            "MOUSEDOWNRIGHT40": ('ms rightdown 40', None, None, 2),
-            "MOUSEDOWNRIGHT250": ('ms rightdown 250', None, None, 3)
+        "A": {'label': 'a', 'key_code': 'a', 'character': 'a', 'arg': None},
+        "B": {'label': 'b', 'key_code': 'b', 'character': 'b', 'arg': None},
+        "C": {'label': 'c', 'key_code': 'c', 'character': 'c', 'arg': None},
+        "D": {'label': 'd', 'key_code': 'd', 'character': 'd', 'arg': None},
+        "E": {'label': 'e', 'key_code': 'e', 'character': 'e', 'arg': None},
+        "F": {'label': 'f', 'key_code': 'f', 'character': 'f', 'arg': None},
+        "G": {'label': 'g', 'key_code': 'g', 'character': 'g', 'arg': None},
+        "H": {'label': 'h', 'key_code': 'h', 'character': 'h', 'arg': None},
+        "I": {'label': 'i', 'key_code': 'i', 'character': 'i', 'arg': None},
+        "J": {'label': 'j', 'key_code': 'j', 'character': 'j', 'arg': None},
+        "K": {'label': 'k', 'key_code': 'k', 'character': 'k', 'arg': None},
+        "L": {'label': 'l', 'key_code': 'l', 'character': 'l', 'arg': None},
+        "M": {'label': 'm', 'key_code': 'm', 'character': 'm', 'arg': None},
+        "N": {'label': 'n', 'key_code': 'n', 'character': 'n', 'arg': None},
+        "O": {'label': 'o', 'key_code': 'o', 'character': 'o', 'arg': None},
+        "P": {'label': 'p', 'key_code': 'p', 'character': 'p', 'arg': None},
+        "Q": {'label': 'q', 'key_code': 'q', 'character': 'q', 'arg': None},
+        "R": {'label': 'r', 'key_code': 'r', 'character': 'r', 'arg': None},
+        "S": {'label': 's', 'key_code': 's', 'character': 's', 'arg': None},
+        "T": {'label': 't', 'key_code': 't', 'character': 't', 'arg': None},
+        "U": {'label': 'u', 'key_code': 'u', 'character': 'u', 'arg': None},
+        "V": {'label': 'v', 'key_code': 'v', 'character': 'v', 'arg': None},
+        "W": {'label': 'w', 'key_code': 'w', 'character': 'w', 'arg': None},
+        "X": {'label': 'x', 'key_code': 'x', 'character': 'x', 'arg': None},
+        "Y": {'label': 'y', 'key_code': 'y', 'character': 'y', 'arg': None},
+        "Z": {'label': 'z', 'key_code': 'z', 'character': 'z', 'arg': None},
+        "ONE": {'label': '1', 'key_code': '1', 'character': '1', 'arg': None},
+        "TWO": {'label': '2', 'key_code': '2', 'character': '2', 'arg': None},
+        "THREE": {'label': '3', 'key_code': '3', 'character': '3', 'arg': None},
+        "FOUR": {'label': '4', 'key_code': '4', 'character': '4', 'arg': None},
+        "FIVE": {'label': '5', 'key_code': '5', 'character': '5', 'arg': None},
+        "SIX": {'label': '6', 'key_code': '6', 'character': '6', 'arg': None},
+        "SEVEN": {'label': '7', 'key_code': '7', 'character': '7', 'arg': None},
+        "EIGHT": {'label': '8', 'key_code': '8', 'character': '8', 'arg': None},
+        "NINE": {'label': '9', 'key_code': '9', 'character': '9', 'arg': None},
+        "ZERO": {'label': '0', 'key_code': '0', 'character': '0', 'arg': None},
+        "DOT": {'label': '.', 'key_code': '.', 'character': '.', 'arg': None},
+        "COMMA": {'label': ',', 'key_code': ',', 'character': ',', 'arg': None},
+        "QUESTION": {'label': '?', 'key_code': '/', 'character': '?', 'arg': None},
+        "EXCLAMATION": {'label': '!', 'key_code': '1', 'character': '!', 'arg': None},
+        "COLON": {'label': ':', 'key_code': ';', 'character': ':', 'arg': None},
+        "SEMICOLON": {'label': ';', 'key_code': ';', 'character': ';', 'arg': None},
+        "AT": {'label': '@', 'key_code': '2', 'character': '@', 'arg': None},
+        "HASH": {'label': '#', 'key_code': '3', 'character': '#', 'arg': None},
+        "DOLLAR": {'label': '$', 'key_code': '4', 'character': '$', 'arg': None},
+        "PERCENT": {'label': '%', 'key_code': '5', 'character': '%', 'arg': None},
+        "AMPERSAND": {'label': '&', 'key_code': '7', 'character': '&', 'arg': None},
+        "STAR": {'label': '*', 'key_code': '*', 'character': '*', 'arg': None},
+        "PLUS": {'label': '+', 'key_code': '=', 'character': '+', 'arg': None},
+        "MINUS": {'label': '-', 'key_code': '-', 'character': '-', 'arg': None},
+        "EQUALS": {'label': '=', 'key_code': '=', 'character': '=', 'arg': None},
+        "FSLASH": {'label': '/', 'key_code': '/', 'character': '/', 'arg': None},
+        "BSLASH": {'label': '\\', 'key_code': '\\', 'character': '\\', 'arg': None},
+        "SINGLEQUOTE": {'label': "'", 'key_code': "'", 'character': "'", 'arg': None},
+        "DOUBLEQUOTE": {'label': '"', 'key_code': '"', 'character': '"', 'arg': None},
+        "OPENBRACKET": {'label': '(', 'key_code': '9', 'character': '(', 'arg': None},
+        "CLOSEBRACKET": {'label': ')', 'key_code': '0', 'character': ')', 'arg': None},
+        "LESSTHAN": {'label': '<', 'key_code': ',', 'character': '<', 'arg': None},
+        "MORETHAN": {'label': '>', 'key_code': '.', 'character': '>', 'arg': None},
+        "CIRCONFLEX": {'label': '^', 'key_code': '6', 'character': '^', 'arg': None},
+        "ENTER": {'label': 'ENTER', 'key_code': 'Key.enter', 'character': '\n', 'arg': None},
+        "SPACE": {'label': 'space', 'key_code': 'Key.space', 'character': ' ', 'arg': None},
+        "BACKSPACE": {'label': 'bckspc', 'key_code': 'Key.backspace', 'character': '\x08', 'arg': None},
+        "TAB": {'label': 'tab', 'key_code': 'Key.tab', 'character': '\t', 'arg': None},
+        "PAGEUP": {'label': 'pageup', 'key_code': 'Key.page_up', 'character': None, 'arg': None},
+        "PAGEDOWN": {'label': 'pagedwn', 'key_code': 'Key.page_down', 'character': None, 'arg': None},
+        "LEFTARROW": {'label': 'left', 'key_code': 'Key.left', 'character': None, 'arg': None},
+        "RIGHTARROW": {'label': 'right', 'key_code': 'Key.right', 'character': None, 'arg': None},
+        "UPARROW": {'label': 'up', 'key_code': 'Key.up', 'character': None, 'arg': None},
+        "DOWNARROW": {'label': 'down', 'key_code': 'Key.down', 'character': None, 'arg': None},
+        "ESCAPE": {'label': 'esc', 'key_code': 'Key.esc', 'character': None, 'arg': None},
+        "HOME": {'label': 'home', 'key_code': 'Key.home', 'character': None, 'arg': None},
+        "END": {'label': 'end', 'key_code': 'Key.end', 'character': None, 'arg': None},
+        "DELETE": {'label': 'del', 'key_code': 'Key.delete', 'character': None, 'arg': None},
+        "SHIFT": {'label': 'shift', 'key_code': 'Key.shift', 'character': None, 'arg': None},
+        "RSHIFT": {'label': 'rshift', 'key_code': 'Key.rshift', 'character': None, 'arg': None},
+        "LSHIFT": {'label': 'lshift', 'key_code': 'Key.lshift', 'character': None, 'arg': None},
+        "CTRL": {'label': 'ctrl', 'key_code': 'Key.ctrl', 'character': None, 'arg': None},
+        "RCTRL": {'label': 'rctrl', 'key_code': 'Key.rctrl', 'character': None, 'arg': None},
+        "LCTRL": {'label': 'lctrl', 'key_code': 'Key.lctrl', 'character': None, 'arg': None},
+        "ALT": {'label': 'alt', 'key_code': 'Key.alt', 'character': None, 'arg': None},
+        "WINDOWS": {'label': 'win', 'key_code': 'Key.cmd', 'character': None, 'arg': None},
+        "CAPSLOCK": {'label': 'caps', 'key_code': 'Key.caps_lock', 'character': None, 'arg': None},
+        "F1": {'label': 'F1', 'key_code': 'Key.f1', 'character': None, 'arg': None},
+        "F2": {'label': 'F2', 'key_code': 'Key.f2', 'character': None, 'arg': None},
+        "F3": {'label': 'F3', 'key_code': 'Key.f3', 'character': None, 'arg': None},
+        "F4": {'label': 'F4', 'key_code': 'Key.f4', 'character': None, 'arg': None},
+        "F5": {'label': 'F5', 'key_code': 'Key.f5', 'character': None, 'arg': None},
+        "F6": {'label': 'F6', 'key_code': 'Key.f6', 'character': None, 'arg': None},
+        "F7": {'label': 'F7', 'key_code': 'Key.f7', 'character': None, 'arg': None},
+        "F8": {'label': 'F8', 'key_code': 'Key.f8', 'character': None, 'arg': None},
+        "F9": {'label': 'F9', 'key_code': 'Key.f9', 'character': None, 'arg': None},
+        "F10": {'label': 'F10', 'key_code': 'Key.f10', 'character': None, 'arg': None},
+        "F11": {'label': 'F11', 'key_code': 'Key.f11', 'character': None, 'arg': None},
+        "F12": {'label': 'F12', 'key_code': 'Key.f12', 'character': None, 'arg': None},
+        "REPEATMODE": {'label': 'repeat', 'key_code': 'unknown', 'character': None, 'arg': 0},
+        "SOUND": {'label': 'snd', 'key_code': 'unknown', 'character': None, 'arg': 8},
+        "CODESET": {'label': 'code', 'key_code': 'unknown', 'character': None, 'arg': 9},
+        "MOUSERIGHT5": {'label': 'ms right 5', 'key_code': 'unknown', 'character': None, 'arg': 2},
+        "MOUSEUP5": {'label': 'ms up 5', 'key_code': 'unknown', 'character': None, 'arg': 3},
+        "MOUSECLICKLEFT": {'label': 'ms clkleft', 'key_code': 'unknown', 'character': None, 'arg': 4},
+        "MOUSEDBLCLICKLEFT": {'label': 'ms dblclkleft', 'key_code': 'unknown', 'character': None, 'arg': 5},
+        "MOUSECLKHLDLEFT": {'label': 'ms hldleft', 'key_code': 'unknown', 'character': None, 'arg': 6},
+        "MOUSEUPLEFT5": {'label': 'ms leftup 5', 'key_code': 'unknown', 'character': None, 'arg': 7},
+        "MOUSEDOWNLEFT5": {'label': 'ms leftdown 5', 'key_code': 'unknown', 'character': None, 'arg': 8},
+        "MOUSERELEASEHOLD": {'label': 'ms release', 'key_code': 'unknown', 'character': None, 'arg': 9},
+        "MOUSELEFT5": {'label': 'ms left 5', 'key_code': 'unknown', 'character': None, 'arg': 0},
+        "MOUSEDOWN5": {'label': 'ms down 5', 'key_code': 'unknown', 'character': None, 'arg': 1},
+        "MOUSECLICKRIGHT": {'label': 'ms clkright', 'key_code': 'unknown', 'character': None, 'arg': 2},
+        "MOUSEDBLCLICKRIGHT": {'label': 'ms dblclkright', 'key_code': 'unknown', 'character': None, 'arg': 3},
+        "MOUSECLKHLDRIGHT": {'label': 'ms hldright', 'key_code': 'unknown', 'character': None, 'arg': 4},
+        "MOUSEUPRIGHT5": {'label': 'ms rightup 5', 'key_code': 'unknown', 'character': None, 'arg': 5},
+        "MOUSEDOWNRIGHT5": {'label': 'ms rightdown 5', 'key_code': 'unknown', 'character': None, 'arg': 6},
+        "NORMALMODE": {'label': 'normal mode', 'key_code': 'unknown', 'character': None, 'arg': 7},
+        "MOUSEUP40": {'label': 'ms up 40', 'key_code': 'unknown', 'character': None, 'arg': 8},
+        "MOUSEUP250": {'label': 'ms up 250', 'key_code': 'unknown', 'character': None, 'arg': 9},
+        "MOUSEDOWN40": {'label': 'ms down 40', 'key_code': 'unknown', 'character': None, 'arg': 0},
+        "MOUSEDOWN250": {'label': 'ms down 250', 'key_code': 'unknown', 'character': None, 'arg': 1},
+        "MOUSELEFT40": {'label': 'ms left 40', 'key_code': 'unknown', 'character': None, 'arg': 2},
+        "MOUSELEFT250": {'label': 'ms left 250', 'key_code': 'unknown', 'character': None, 'arg': 3},
+        "MOUSERIGHT40": {'label': 'ms right 40', 'key_code': 'unknown', 'character': None, 'arg': 4},
+        "MOUSERIGHT250": {'label': 'ms right 250', 'key_code': 'unknown', 'character': None, 'arg': 5},
+        "MOUSEUPLEFT40": {'label': 'ms leftup 40', 'key_code': 'unknown', 'character': None, 'arg': 6},
+        "MOUSEUPLEFT250": {'label': 'ms leftup 250', 'key_code': 'unknown', 'character': None, 'arg': 7},
+        "MOUSEDOWNLEFT40": {'label': 'ms leftdown 40', 'key_code': 'unknown', 'character': None, 'arg': 8},
+        "MOUSEDOWNLEFT250": {'label': 'ms leftdown 250', 'key_code': 'unknown', 'character': None, 'arg': 9},
+        "MOUSEUPRIGHT40": {'label': 'ms rightup 40', 'key_code': 'unknown', 'character': None, 'arg': 0},
+        "MOUSEUPRIGHT250": {'label': 'ms rightup 250', 'key_code': 'unknown', 'character': None, 'arg': 1},
+        "MOUSEDOWNRIGHT40": {'label': 'ms rightdown 40', 'key_code': 'unknown', 'character': None, 'arg': 2},
+        "MOUSEDOWNRIGHT250": {'label': 'ms rightdown 250', 'key_code': 'unknown', 'character': None, 'arg': 3}
         }
         self.config_file = config_file
         self.default_config = default_config
@@ -212,8 +209,8 @@ class ConfigManager:
     def initKeystrokeMap(self):
         keystrokemap = {}
         keystrokes = []
-        for key, (label, key_code, character, arg) in self.key_data.items():
-            stroke = KeyStroke(key, label, key_code, character)
+        for key, data in self.key_data.items():
+            stroke = KeyStroke(key, data['label'], data['key_code'], data['character'])
             keystrokes.append(stroke)
             keystrokemap[key] = stroke
         return keystrokemap, keystrokes
@@ -256,21 +253,26 @@ class ConfigManager:
         
     def initActions(self, window):
         actions = {}
-        for key, (label, key_code, character, arg) in self.key_data.items():
-            # Pass current loop variables as default values to ensure correct capturing
+        
+        # Set up actions for each key based on `key_data`
+        for key, value in self.key_data.items():
+            label = value['label']
+            key_code = value['key_code']
+            character = value['character']
+            arg = value['arg']
+    
+            # Use the correct capturing of loop variables
             action_key = key.upper()
-            actions[action_key] = lambda item, lbl=label, kc=key_code, char=character, a=arg: ActionKeyStroke({'label': lbl, 'key_code': kc, 'character': char, 'arg': a}, kc)
-            
-        # Define special actions, making sure to correctly handle lambda capturing
-        actions["CHANGELAYOUT"] = lambda item, window=window: ChangeLayoutAction(item, window)
-        #actions["PREDICTION_SELECT"] = lambda item: PredictionSelectLayoutAction(item)
-        actions["PREDICTION_SELECT"] = lambda item, window=window: PredictionSelectLayoutAction(
-                item, get_predictions_func=window.getTypeStatePredictions)
-        actions["KEYSTROKE"] = lambda item, key_data=self.key_data: ActionKeyStroke(item, key_data[item['action'].upper()])
-
+            actions[action_key] = lambda item, lbl=label, kc=key_code, char=character, a=arg: ActionKeyStroke(
+                {'label': lbl, 'key_code': kc, 'character': char, 'arg': a}, kc)
+        
+        # Define special actions with correct lambda capturing
+        actions["CHANGELAYOUT"] = lambda item, win=window: ChangeLayoutAction(item, win)
+        actions["PREDICTION_SELECT"] = lambda item, win=window: PredictionSelectLayoutAction(
+            item, get_predictions_func=win.getTypeStatePredictions)
+        actions["KEYSTROKE"] = lambda item, kd=self.key_data: ActionKeyStroke(item, kd[item['action'].upper()])
     
         return actions
-
         
 class TypeState(pressagio.callback.Callback):
     def __init__ (self):
@@ -299,47 +301,34 @@ class TypeState(pressagio.callback.Callback):
 
 
 class KeyListenerThread(QThread):
-    keyEvent = pyqtSignal(str, bool)
+    keyEvent = pyqtSignal(str, bool)  # Emit key name and press/release status
 
     def __init__(self, configured_keys):
         super().__init__()
-        self.configured_keys = configured_keys
-        self.listener = None
+        self.configured_keys = configured_keys  # keys in the 'keyboard' library format
+        self.keep_running = True  # Control running of the loop
 
     def run(self):
-        try:
-            self.listener = Listener(on_press=self.on_press, on_release=self.on_release)
-            self.listener.start()
-            self.listener.join()
-        except Exception as e:
-            logging.error(f"Listener failed: {e}")
+        # Setup key hooks once, outside the loop
+        for key in self.configured_keys:
+            keyboard.on_press_key(key, self.on_press, suppress=True)
+            keyboard.on_release_key(key, self.on_release, suppress=True)
+        
+        # Minimal loop to keep the thread alive
+        while self.keep_running:
+            time.sleep(0.1)  # Small sleep to avoid CPU overload
+
+    def on_press(self, event):
+        self.keyEvent.emit(event.name, True)
+
+    def on_release(self, event):
+        self.keyEvent.emit(event.name, False)
 
     def stop(self):
-        if self.listener:
-            self.listener.stop()
-
-    def on_press(self, key):
-        try:
-            if any(key == k for k in self.configured_keys):
-                key_description = self.get_key_description(key)
-                self.keyEvent.emit(key_description, True)
-        except Exception as e:
-            logging.error(f"Error processing key press: {e}")
-
-    def on_release(self, key):
-        try:
-            if any(key == k for k in self.configured_keys):
-                key_description = self.get_key_description(key)
-                self.keyEvent.emit(key_description, False)
-        except Exception as e:
-            logging.error(f"Error processing key release: {e}")
-
-    def get_key_description(self, key):
-        if hasattr(key, 'char') and key.char:
-            return key.char
-        elif hasattr(key, 'name'):
-            return key.name
-        return 'Unknown key'
+        self.keep_running = False  # Signal the loop to stop
+        keyboard.unhook_all()  # Unhook all keys
+        self.quit()  # Quit the thread's event loop if necessary
+        self.wait()  # Wait for the thread to finish
 
 
 class PressagioCallback(pressagio.callback.Callback):
@@ -404,18 +393,18 @@ class LayoutManager:
             raise ValueError("No active layout set.")
 
 def moveMouse(x_delta, y_delta):
-    current_pos = mouse_controller.position
+    current_pos = mouse.get_position
     new_pos = (current_pos[0] + x_delta, current_pos[1] + y_delta)
-    mouse_controller.position = new_pos
+    mouse.move(new_pos)
 
 def clickMouse(button='left', action='click'):
     btn = Button.left if button == 'left' else Button.right
     if action == 'click':
-        mouse_controller.click(btn)
+        mouse.click(btn)
     elif action == 'press':
-        mouse_controller.press(btn)
+        mouse.press(btn)
     elif action == 'release':
-        mouse_controller.release(btn)
+        mouse.release(btn)
 
 
 def getPossibleCombos(currentCharacter):
@@ -514,14 +503,13 @@ class KeyStroke (object):
 class ActionKeyStroke(Action):
     def __init__(self, item, key, toggle_action=False):
         super(ActionKeyStroke, self).__init__(item)
-        self.key = key  # if already KeyCode no need to convert
-        self.key_name = key.char if isinstance(key, KeyCode) else key  # Handle both cases
+        self.key = key
         self.label = item.get('label', item.get('action'))
         self.toggle_action = toggle_action
 
     @property
     def name(self):
-        return self.key_name
+        return self.key
     
     def getlabel(self):
         # Returns the label associated with this action, if any
@@ -532,14 +520,14 @@ class ActionKeyStroke(Action):
         logging.debug(f"[ActionKeyStroke] Key to press/release: {self.key}, type: {type(self.key)}")
         try:
             if self.toggle_action:
-                current_state = getKeyStrokeState(self.key)  # Ensure this function is properly defined
+                current_state = get_keystroke_state(self.key)  # Ensure this function is properly defined
                 if current_state['down']:
-                    keyboard_controller.release(self.key)
+                    keyboard.release(self.key)
                 else:
-                    keyboard_controller.press(self.key)
+                    keyboard.press(self.key)
             else:
-                keyboard_controller.press(self.key)
-                keyboard_controller.release(self.key)
+                keyboard.press(self.key)
+                keyboard.release(self.key)
         except Exception as e:
             logging.error(f"Error during key press/release: {e}")
 
@@ -585,8 +573,7 @@ class PredictionSelectLayoutAction(Action):
                 newchars = pred[len(stripsuffix):] + " "
                 typestate.text = typestate.text[:len(typestate.text)-len(stripsuffix)] + newchars
                 for char in newchars:
-                    # Use pynput to type characters instead of win32api
-                    keyboard_controller.type(char)  # This handles normal characters
+                    keyboard.press_and_release(char)  # This handles normal characters
 
 
 class Window(QDialog):
@@ -650,44 +637,20 @@ class Window(QDialog):
     def get_configured_keys(self):
         key_names = []
         if self.config.get('keylen', 1) >= 1:
-            key_names.append(self.config.get('keyone', 'SPACE'))  # Default to SPACE if not set
+            key_names.append(self.config.get('keyone', 'space'))  # Default to SPACE if not set
         if self.config.get('keylen', 1) >= 2:
-            key_names.append(self.config.get('keytwo', 'ENTER'))  # Default to ENTER if not set
+            key_names.append(self.config.get('keytwo', 'enter'))  # Default to ENTER if not set
         if self.config.get('keylen', 1) == 3:
-            key_names.append(self.config.get('keythree', 'RCTRL'))  # Default to RCTRL if not set
+            key_names.append(self.config.get('keythree', 'right ctrl'))  # Default to RCTRL if not set
         return key_names
     
-    def startKeyListener(self):
-        pynputKeys = {
-            "SPACE": Key.space, "ENTER": Key.enter,
-            "ONE": KeyCode.from_char('1'), "TWO": KeyCode.from_char('2'),
-            "Z": KeyCode.from_char('z'), "X": KeyCode.from_char('x'),
-            "F8": Key.f8, "F9": Key.f9,
-            "RCTRL": Key.ctrl_r, "LCTRL": Key.ctrl_l,
-            "RSHIFT": Key.shift_r, "LSHIFT": Key.shift_l,
-            "LALT": Key.alt_l
-        }
-        logging.debug(f"Available keys in pynputKeys: {list(pynputKeys.keys())}")  # Print available keys
-
-        try:
-            key_names = self.get_configured_keys()  # Retrieve configured key names
-            logging.debug(f"Configured key names: {key_names}")
-            configured_keys = [pynputKeys[key.upper()] for key in key_names if key.upper() in pynputKeys]
-            logging.debug(f"Configured pynput keys: {configured_keys}")
     
-            if not configured_keys:  # If no valid keys are configured, log and avoid starting the thread
-                logging.warning("No valid keys configured for KeyListenerThread.")
-                return
-                
-            if not self.listenerThread:
-                self.listenerThread = KeyListenerThread(configured_keys=configured_keys)
-                self.listenerThread.keyEvent.connect(self.handle_key_event)
-                self.listenerThread.start()
-            logging.debug("KeyListenerThread started successfully.")
-        except Exception as e:
-            logging.critical(f"Failed to start KeyListenerThread due to error: {str(e)}")
-            logging.critical(f"Problematic keys: {[key for key in key_names if key.upper() not in pynputKeys]}")
-
+    def startKeyListener(self):
+        key_names = self.get_configured_keys()  # this should return keys in the correct format already
+        if not self.listenerThread:
+            self.listenerThread = KeyListenerThread(configured_keys=key_names)
+            self.listenerThread.keyEvent.connect(self.handle_key_event)
+            self.listenerThread.start()
     
     def updateAudioProperties(self):
         if self.withSound.isChecked():
@@ -804,9 +767,10 @@ class Window(QDialog):
         
         inputKeyComboBoxesLayout = QHBoxLayout()
          # Filter the keystrokes to only include those keys that are specified in morse_keys
-        morse_keys = ["SPACE", "ENTER", "ONE", "TWO", "Z", "X", "F8", "F9"]
+        morse_keys = ["SPACE", "ENTER", "ONE", "TWO", "Z", "F8", "F9"]
         filtered_keystrokes = [(key, self.keystrokemap[key].label) for key in morse_keys if key in self.keystrokemap]
-    
+
+        
         # Set up the combo box for the first key using the filtered list
         self.iconComboBoxKeyOne = self.mkKeyStrokeComboBox(
             filtered_keystrokes,
@@ -1169,12 +1133,12 @@ class CodesLayoutViewWidget(QWidget):
         for keyname in ("ALT", "SHIFT", "CTRL"):
             coderep = self.keystroke_crs_map.get(keyname, None)
             if coderep is not None:
-                coderep.toggled = getKeyStrokeState(keyname)['down']
+                coderep.toggled = get_keystroke_state(keyname)['down']
                 coderep.updateView()
         coderep = self.keystroke_crs_map.get("CAPSLOCK", None)
         if coderep is not None:
             key = coderep.item['_action'].key
-            coderep.toggled = getKeyStrokeState("CAPSLOCK")["locked"]# (state & 1) == 1
+            coderep.toggled = get_keystroke_state("CAPSLOCK")["locked"]# (state & 1) == 1
             coderep.updateView()
          
 
@@ -1244,20 +1208,16 @@ class CodesLayoutViewWidget(QWidget):
             
     def closeEvent(self, event):
         window.backToSettings()
-
-#THIS WONT WQORK! OOPs
-def getKeyStrokeState (name):
-    global keystrokes_state
-    state = keystrokes_state.get(name, None)
-    if state is None:
-        state = {"down":False}
-        keystroke = keystrokemap[name]
-        keystate = unpack("H", pack("h", win32api.GetKeyState(keystroke.keywin32)))[0]
-        state['down'] = (keystate & 1<<15) != 0
-        if name == "CAPSLOCK":
-            state['locked'] = (keystate & 1) == 1
-        keystrokes_state[name] = state
+    
+def get_keystroke_state(name):
+    state = {
+        "down": keyboard.is_pressed(name)
+    }
+    # Special case handling for CAPS LOCK which needs to check toggle state
+    if name.lower() == "capslock":
+        state["locked"] = keyboard.is_pressed('caps lock')
     return state
+
 
 class CustomApplication(QApplication):
     def notify(self, receiver, event):
