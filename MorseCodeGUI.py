@@ -988,11 +988,15 @@ class Window(QDialog):
 
     def addDit(self):
         self.currentCharacter.append(1)  # Assuming 1 represents Dit
+        if self.typestate:
+            self.typestate.pushchar('e')
         if self.config['withsound']:
             play("res/dit_sound.wav")   
         self.codeslayoutview.Dit()
 
     def addDah(self):
+        if self.typestate:
+            self.typestate.pushchar('t')
         self.currentCharacter.append(2)  # Assuming 2 represents Dah
         if self.config['withsound']:
             play("res/dah_sound.wav")
