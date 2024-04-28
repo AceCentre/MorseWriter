@@ -291,11 +291,13 @@ class TypeState(pressagio.callback.Callback):
         self.text = self.text[:-1]
         self.predictions = None
     def getpredictions(self):
+        logging.debug("[TypeState] Fetching predictions for text: {}".format(self.text))
         if self.predictions is None:
             try:
+                logging.debug("[TypeState] Predictions fetched: {}".format(self.predictions))
                 self.predictions = self.presage.predict()
             except Exception as e:
-                logging.error(f"Failed to generate predictions: {str(e)}")
+                logging.error(f"[TypeState] Failed to generate predictions: {str(e)}")
                 self.predictions = []
         return self.predictions
 
@@ -503,7 +505,7 @@ class KeyStroke (object):
 class ActionKeyStroke(Action):
     def __init__(self, item, key, toggle_action=False):
         super(ActionKeyStroke, self).__init__(item)
-        self.key = key
+        self.key = key  # Assuming 'key' contains both the key code and character information.
         self.label = item.get('label', item.get('action'))
         self.toggle_action = toggle_action
 
@@ -512,15 +514,14 @@ class ActionKeyStroke(Action):
         return self.key
     
     def getlabel(self):
-        # Returns the label associated with this action, if any
+        # Returns the label associated with this action, if any.
         return self.label
-
 
     def perform(self):
         logging.debug(f"[ActionKeyStroke] Key to press/release: {self.key}, type: {type(self.key)}")
         try:
             if self.toggle_action:
-                current_state = get_keystroke_state(self.key)  # Ensure this function is properly defined
+                current_state = get_keystroke_state(self.key)  # Ensure this function is properly defined.
                 if current_state['down']:
                     keyboard.release(self.key)
                 else:
@@ -528,8 +529,15 @@ class ActionKeyStroke(Action):
             else:
                 keyboard.press(self.key)
                 keyboard.release(self.key)
+                # Update typestate based on key action.
+                if hasattr(self.key, 'character'):  # Ensure 'character' attribute exists.
+                    if self.key.character == '\b':  # Assuming backspace is represented as '\b'.
+                        typestate.popchar()
+                    else:
+                        typestate.pushchar(self.key.character)
         except Exception as e:
             logging.error(f"Error during key press/release: {e}")
+
 
 
 
@@ -1097,24 +1105,24 @@ class CodeRepresentation(QWidget):
         self.tickDitDah()
     
     def Dit(self):
-        logging.debug(f"Attempting Dit. Enabled: {self.is_enabled}, Disabled Chars: {self.disabledchars}, Code Length: {len(self.code)}")
+        logging.debug(f"[CodeRepresentation] Attempting Dit. Enabled: {self.is_enabled}, Disabled Chars: {self.disabledchars}, Code Length: {len(self.code)}")
         if (self.enabled()):
             if ((self.disabledchars < len(self.code)) and self.code[self.disabledchars] == '.'):
                 self.tickDitDah()
-                logging.debug("Dit successful.")
+                logging.debug("[CodeRepresentation] Dit successful.")
             else:
                 self.disable()
-                logging.debug("Dit failed - disabling.")
+                logging.debug("[CodeRepresentation] Dit failed - disabling.")
 
     def Dah(self):
-        logging.debug(f"Attempting Dah. Enabled: {self.is_enabled}, Disabled Chars: {self.disabledchars}, Code Length: {len(self.code)}")
+        logging.debug(f"[CodeRepresentation] Attempting Dah. Enabled: {self.is_enabled}, Disabled Chars: {self.disabledchars}, Code Length: {len(self.code)}")
         if (self.enabled()):
             if ((self.disabledchars < len(self.code)) and self.code[self.disabledchars] == '-'):
                 self.tickDitDah()
-                logging.debug("Dah successful.")
+                logging.debug("[CodeRepresentation] Dah successful.")
             else:
                 self.disable()
-                logging.debug("Dah failed - disabling.")
+                logging.debug("[CodeRepresentation] Dah failed - disabling.")
     
     def tickDitDah(self):
         self.disabledchars += 1
