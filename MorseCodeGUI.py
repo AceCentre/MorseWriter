@@ -981,12 +981,14 @@ class Window(QDialog):
     def addDit(self):
         self.currentCharacter.append(1)  # Assuming 1 represents Dit
         if self.config['withsound']:
-            play("res/dit_sound.wav")
+            play("res/dit_sound.wav")   
+        self.codeslayoutview.Dit()
 
     def addDah(self):
         self.currentCharacter.append(2)  # Assuming 2 represents Dah
         if self.config['withsound']:
             play("res/dah_sound.wav")
+        self.codeslayoutview.Dah()
 
     def startEndCharacterTimer(self):
         if self.endCharacterTimer is not None:
@@ -1095,18 +1097,24 @@ class CodeRepresentation(QWidget):
         self.tickDitDah()
     
     def Dit(self):
+        logging.debug(f"Attempting Dit. Enabled: {self.is_enabled}, Disabled Chars: {self.disabledchars}, Code Length: {len(self.code)}")
         if (self.enabled()):
             if ((self.disabledchars < len(self.code)) and self.code[self.disabledchars] == '.'):
                 self.tickDitDah()
+                logging.debug("Dit successful.")
             else:
                 self.disable()
+                logging.debug("Dit failed - disabling.")
 
     def Dah(self):
+        logging.debug(f"Attempting Dah. Enabled: {self.is_enabled}, Disabled Chars: {self.disabledchars}, Code Length: {len(self.code)}")
         if (self.enabled()):
             if ((self.disabledchars < len(self.code)) and self.code[self.disabledchars] == '-'):
                 self.tickDitDah()
+                logging.debug("Dah successful.")
             else:
                 self.disable()
+                logging.debug("Dah failed - disabling.")
     
     def tickDitDah(self):
         self.disabledchars += 1
