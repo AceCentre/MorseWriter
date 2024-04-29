@@ -723,7 +723,8 @@ class Window(QDialog):
             self.hide()
         self.config = self.collect_config()
         self.init()
-        self.startKeyListener()
+        if not self.listenerThread:
+            self.startKeyListener() 
         
     def start (self):
         self.init()  
@@ -930,6 +931,7 @@ class Window(QDialog):
         if self.listenerThread is not None:
             self.listenerThread.stop()
             self.listenerThread.wait()
+            self.listenerThread = None  
         if self.codeslayoutview is not None:
             self.codeslayoutview.hide()
             self.codeslayoutview = None
