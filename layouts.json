@@ -109,7 +109,7 @@
         { "code": "212121", "action": "COLON" },
         { "code": "11121", "action": "SEMICOLON" },
         { "code": "12221", "action": "AT" },
-        { "code": "21222", "action": "BASH" },
+        { "code": "21222", "action": "HASH" },
         { "code": "211121", "action": "DOLLAR" },
         { "code": "122121", "action": "PERCENT" },
         { "code": "21122", "action": "AMPERSAND" },
@@ -148,7 +148,6 @@
         { "code": "12122", "action": "ALT" },
         { "code": "21212", "action": "CTRL" },
         { "code": "112122", "action": "WINDOWS" },
-        { "code": "211122", "action": "APPKEY" },
         { "code": "112121", "action": "CAPSLOCK" },
         { "code": "22121", "action": "CHANGELAYOUT", "target": "mouse", "label": "GOTO Mouse" },
         { "code": "21112", "action": "CHANGELAYOUT", "target": "number", "label": "GOTO Number" },
@@ -230,5 +229,5 @@
       ]
     }
   },
-  "mainlayout": "typing"
+  "mainlayout": "main"
 }

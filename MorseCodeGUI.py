@@ -133,6 +133,7 @@ class ConfigManager:
         "SPACE": {'label': 'space', 'key_code': 'space', 'character': ' ', 'arg': None},
         "BACKSPACE": {'label': 'bckspc', 'key_code': 'backspace', 'character': '\x08', 'arg': None},
         "TAB": {'label': 'tab', 'key_code': 'tab', 'character': '\t', 'arg': None},
+        "UNDERSCORE": {'label': 'underscore', 'key_code': '_', 'character': '_', 'arg': None},
         "PAGEUP": {'label': 'pageup', 'key_code': 'page_up', 'character': None, 'arg': None},
         "PAGEDOWN": {'label': 'pagedwn', 'key_code': 'page_down', 'character': None, 'arg': None},
         "LEFTARROW": {'label': 'left', 'key_code': 'left', 'character': None, 'arg': None},
@@ -150,7 +151,9 @@ class ConfigManager:
         "RCTRL": {'label': 'rctrl', 'key_code': 'right ctrl', 'character': None, 'arg': None},
         "LCTRL": {'label': 'lctrl', 'key_code': 'left ctrl', 'character': None, 'arg': None},
         "ALT": {'label': 'alt', 'key_code': 'alt', 'character': None, 'arg': None},
+        "INSERT": {'label': 'insert', 'key_code': 'insert', 'character': None, 'arg': None},
         "WINDOWS": {'label': 'win', 'key_code': 'cmd', 'character': None, 'arg': None},
+        "STARTMENU": {'label': 'startmenu', 'key_code': 'start', 'character': None, 'arg': None},
         "CAPSLOCK": {'label': 'caps', 'key_code': 'caps lock', 'character': None, 'arg': None},
         "F1": {'label': 'F1', 'key_code': 'f1', 'character': None, 'arg': None},
         "F2": {'label': 'F2', 'key_code': 'f2', 'character': None, 'arg': None},
@@ -537,9 +540,6 @@ class ActionKeyStroke(Action):
                     typestate.pushchar(key_char)
         except Exception as e:
             logging.error(f"Error during key press/release: {e}")
-
-
-
 
 class ChangeLayoutAction(Action):
     def __init__(self, item, window):
