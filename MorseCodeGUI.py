@@ -722,7 +722,11 @@ class Window(QDialog):
                                     "The program will run in the system tray. To terminate the program, choose <b>Quit</b> in the context menu of the system tray entry.")
             self.hide()
         self.config = self.collect_config()
-        self.init()  # Assume this initializes key listening etc
+        self.init()
+        self.startKeyListener()
+        
+    def start (self):
+        self.init()  
         self.startKeyListener()
 
     def closeEvent(self, event):
@@ -1015,51 +1019,48 @@ class Window(QDialog):
         if self.config['withsound']:
             play("res/dit_sound.wav")   
         self.codeslayoutview.Dit()
-        self.startEndCharacterTimer()
     
     def addDah(self):
         self.currentCharacter.append(2)
         if self.config['withsound']:
             play("res/dah_sound.wav")
         self.codeslayoutview.Dah()
-        self.startEndCharacterTimer()
-        
+
+
     def startEndCharacterTimer(self):
         if self.endCharacterTimer is not None:
-            self.endCharacterTimer.stop()  # Ensure the previous timer is stopped before starting a new one
+            self.endCharacterTimer.stop()  # Stop existing timer
         self.endCharacterTimer = QTimer()
         self.endCharacterTimer.setSingleShot(True)
         self.endCharacterTimer.timeout.connect(self.endCharacter)
         self.endCharacterTimer.start(int(self.config['minLetterPause']))  # Configure delay from settings
         logging.debug(f"[startEndCharacter] Timer restarted with a delay of {self.config['minLetterPause']} ms")
+        
 
     def endCharacter(self):
-        morse_code = "".join(map(str, self.currentCharacter))
+        morse_code = "".join(str(char) for char in self.currentCharacter)
+        if self.endCharacterTimer is not None:
+            self.endCharacterTimer.stop()
+            self.endCharacterTimer = None
+    
         try:
             active_layout = self.layoutManager.get_active_layout()
             items = active_layout.get('items', [])
             item = next((item for item in items if item.get('code') == morse_code), None)
-        
+    
             if item and '_action' in item:
                 action = item['_action']
-                if callable(action.perform):
-                    action.perform()
-                    # Update TypeState if the action involves a key stroke
-                    if isinstance(action, ActionKeyStroke):  # Assuming ActionKeyStroke is a defined type
-                        self.typestate.pushchar(action.key)  # Update TypeState with the actual character
-                    logging.info(f"[endCharacter] Action performed for Morse code: {morse_code}")
-                else:
-                    logging.error("[endCharacter] Action defined but not executable for Morse code: {morse_code}")
+                action.perform()
+                if isinstance(action, ActionKeyStroke):
+                    self.typestate.pushchar(action.key)  # Update only after the action is confirmed
+                logging.info(f"[endCharacter] Action performed for Morse code: {morse_code}")
             else:
                 logging.warning(f"[endCharacter] No action found for Morse code: {morse_code}")
         except Exception as e:
             logging.error(f"[endCharacter] Failed to perform action for Morse code: {morse_code}. Error: {e}")
         finally:
-            self.currentCharacter = []  # Clear the Morse code sequence
-            self.codeslayoutview.reset()  # Reset UI state
-
-
-
+            self.currentCharacter = []  # Reset after handling
+            self.codeslayoutview.reset()
 
 class CodeRepresentation(QWidget):
     def __init__(self, parent, code, item, c1, config):
@@ -1142,7 +1143,7 @@ class CodeRepresentation(QWidget):
                 logging.debug("[CodeRepresentation] Dit successful.")
             else:
                 self.disable()
-                logging.debug("[CodeRepresentation] Dit failed - disabling.")
+                #logging.debug("[CodeRepresentation] Dit failed - disabling.")
 
     def Dah(self):
         logging.debug(f"[CodeRepresentation] Attempting Dah. Enabled: {self.is_enabled}, Disabled Chars: {self.disabledchars}, Code Length: {len(self.code)}")
@@ -1152,7 +1153,7 @@ class CodeRepresentation(QWidget):
                 logging.debug("[CodeRepresentation] Dah successful.")
             else:
                 self.disable()
-                logging.debug("[CodeRepresentation] Dah failed - disabling.")
+                #logging.debug("[CodeRepresentation] Dah failed - disabling.")
     
     def tickDitDah(self):
         self.disabledchars += 1
@@ -1297,6 +1298,7 @@ if __name__ == '__main__':
     # Show or hide the window based on the configuration
     if configmanager.config.get("autostart", False):
         window.hide()
+        window.start()
     else:
         window.show()
 
