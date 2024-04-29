@@ -600,6 +600,7 @@ class Window(QDialog):
         self.currentCharacter = []
         self.lastKeyDownTime = None
         self.endCharacterTimer = None
+        self.inputDisabled = False
 
     def load_default_config(self):
         return DEFAULT_CONFIG.copy()
@@ -965,26 +966,49 @@ class Window(QDialog):
 
     def on_press(self, key):
         try:
-            if self.lastKeyDownTime is None:  # Start timing the key press
-                self.lastKeyDownTime = time.time()
+            # Handle disable toggle (adapt keys according to your config)
+            if self.check_disable_combination(key):
+                self.inputDisabled = not self.inputDisabled
+                return
+    
+            if self.inputDisabled:
+                return  # Ignore input if disabled
+    
+            # Prevent processing if key is already considered 'down'
+            if self.lastKeyDownTime is not None:
+                return
+    
+            # Start timing the key press
+            self.lastKeyDownTime = time.time()
             logging.debug(f"[on_press] Key pressed: {key}")
+    
         except Exception as e:
             logging.warning(f"[on_press] Error on key press: {e}")
+    
+    def check_disable_combination(self, key):
+        # Example logic, replace with actual keys and states
+        return key == 'P' and self.key_state['CTRL'] and self.key_state['SHIFT']
     
     def on_release(self, key):
         try:
             if self.lastKeyDownTime is not None:
                 duration = (time.time() - self.lastKeyDownTime) * 1000  # Duration in milliseconds
-                self.lastKeyDownTime = None
-                maxDitTime = float(self.config.get('maxDitTime', 350))  # Safely access config
+                self.lastKeyDownTime = None  # Reset key down time
+    
+                # Check for dit or dah based on duration
+                maxDitTime = float(self.config.get('maxDitTime', 350))
                 if duration < maxDitTime:
                     self.addDit()
                 else:
                     self.addDah()
+    
+                # Start timer for end character sequence
                 self.startEndCharacterTimer()
                 logging.debug(f"[on_release] Key released: {key}, duration: {duration}ms")
+    
         except Exception as e:
             logging.warning(f"[on_release] Error on key release: {e}")
+
 
     def addDit(self):
         self.currentCharacter.append(1)  # Assuming 1 represents Dit
@@ -1004,15 +1028,18 @@ class Window(QDialog):
 
     def startEndCharacterTimer(self):
         if self.endCharacterTimer is not None:
-            self.endCharacterTimer.stop()
+            self.endCharacterTimer.stop()  # Stop the existing timer if it's running
+            self.endCharacterTimer = None  # Reset the timer object
+    
         self.endCharacterTimer = QTimer()
         self.endCharacterTimer.setSingleShot(True)
         self.endCharacterTimer.timeout.connect(self.endCharacter)
-        self.endCharacterTimer.start(int(self.config['minLetterPause']))
+        self.endCharacterTimer.start(int(self.config['minLetterPause']))  # Start the timer with the configured pause
+    
+        logging.debug(f"Timer started with a delay of {self.config['minLetterPause']} ms")
 
     def endCharacter(self):
         morse_code = "".join(map(str, self.currentCharacter)).upper()  # Convert to upper case to match action keys
-    
         try:
             active_layout = self.layoutManager.get_active_layout()
             items = active_layout.get('items', [])
@@ -1030,9 +1057,9 @@ class Window(QDialog):
                 logging.error(f"[endCharacter] No action found for Morse code: {morse_code}")
         except Exception as e:
             logging.error(f"[endCharacter] Failed to perform action for Morse code: {morse_code}. Error: {str(e)}")
-    
-        self.currentCharacter = []
-
+        finally:
+            self.currentCharacter = []  # Reset the current sequence
+            self.codeslayoutview.reset()  # Reset UI state
 
 
 class CodeRepresentation(QWidget):
@@ -1225,7 +1252,7 @@ class CodesLayoutViewWidget(QWidget):
     def reset(self):
         for item in self.crs.values():
             item.reset()
-            
+    
     def closeEvent(self, event):
         window.backToSettings()
     
