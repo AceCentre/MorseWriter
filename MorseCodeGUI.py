@@ -1011,55 +1011,54 @@ class Window(QDialog):
 
 
     def addDit(self):
-        self.currentCharacter.append(1)  # Assuming 1 represents Dit
-        if self.typestate:
-            self.typestate.pushchar('e')
+        self.currentCharacter.append(1)
         if self.config['withsound']:
             play("res/dit_sound.wav")   
         self.codeslayoutview.Dit()
-
+        self.startEndCharacterTimer()
+    
     def addDah(self):
-        if self.typestate:
-            self.typestate.pushchar('t')
-        self.currentCharacter.append(2)  # Assuming 2 represents Dah
+        self.currentCharacter.append(2)
         if self.config['withsound']:
             play("res/dah_sound.wav")
         self.codeslayoutview.Dah()
-
+        self.startEndCharacterTimer()
+        
     def startEndCharacterTimer(self):
         if self.endCharacterTimer is not None:
-            self.endCharacterTimer.stop()  # Stop the existing timer if it's running
-            self.endCharacterTimer = None  # Reset the timer object
-    
+            self.endCharacterTimer.stop()  # Ensure the previous timer is stopped before starting a new one
         self.endCharacterTimer = QTimer()
         self.endCharacterTimer.setSingleShot(True)
         self.endCharacterTimer.timeout.connect(self.endCharacter)
-        self.endCharacterTimer.start(int(self.config['minLetterPause']))  # Start the timer with the configured pause
-    
-        logging.debug(f"Timer started with a delay of {self.config['minLetterPause']} ms")
+        self.endCharacterTimer.start(int(self.config['minLetterPause']))  # Configure delay from settings
+        logging.debug(f"[startEndCharacter] Timer restarted with a delay of {self.config['minLetterPause']} ms")
 
     def endCharacter(self):
-        morse_code = "".join(map(str, self.currentCharacter)).upper()  # Convert to upper case to match action keys
+        morse_code = "".join(map(str, self.currentCharacter))
         try:
             active_layout = self.layoutManager.get_active_layout()
             items = active_layout.get('items', [])
             item = next((item for item in items if item.get('code') == morse_code), None)
-    
+        
             if item and '_action' in item:
                 action = item['_action']
-                if action:
-                    logging.debug(f"[endCharacter] Performing action for key: {action.key}, action type: {type(action)}")
+                if callable(action.perform):
                     action.perform()
+                    # Update TypeState if the action involves a key stroke
+                    if isinstance(action, ActionKeyStroke):  # Assuming ActionKeyStroke is a defined type
+                        self.typestate.pushchar(action.key)  # Update TypeState with the actual character
                     logging.info(f"[endCharacter] Action performed for Morse code: {morse_code}")
                 else:
-                    logging.error(f"[endCharacter] Action defined but not executable for Morse code: {morse_code}")
+                    logging.error("[endCharacter] Action defined but not executable for Morse code: {morse_code}")
             else:
-                logging.error(f"[endCharacter] No action found for Morse code: {morse_code}")
+                logging.warning(f"[endCharacter] No action found for Morse code: {morse_code}")
         except Exception as e:
-            logging.error(f"[endCharacter] Failed to perform action for Morse code: {morse_code}. Error: {str(e)}")
+            logging.error(f"[endCharacter] Failed to perform action for Morse code: {morse_code}. Error: {e}")
         finally:
-            self.currentCharacter = []  # Reset the current sequence
+            self.currentCharacter = []  # Clear the Morse code sequence
             self.codeslayoutview.reset()  # Reset UI state
+
+
 
 
 class CodeRepresentation(QWidget):
