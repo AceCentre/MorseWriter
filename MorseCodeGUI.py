@@ -129,41 +129,41 @@ class ConfigManager:
         "LESSTHAN": {'label': '<', 'key_code': ',', 'character': '<', 'arg': None},
         "MORETHAN": {'label': '>', 'key_code': '.', 'character': '>', 'arg': None},
         "CIRCONFLEX": {'label': '^', 'key_code': '6', 'character': '^', 'arg': None},
-        "ENTER": {'label': 'ENTER', 'key_code': 'Key.enter', 'character': '\n', 'arg': None},
-        "SPACE": {'label': 'space', 'key_code': 'Key.space', 'character': ' ', 'arg': None},
-        "BACKSPACE": {'label': 'bckspc', 'key_code': 'Key.backspace', 'character': '\x08', 'arg': None},
-        "TAB": {'label': 'tab', 'key_code': 'Key.tab', 'character': '\t', 'arg': None},
-        "PAGEUP": {'label': 'pageup', 'key_code': 'Key.page_up', 'character': None, 'arg': None},
-        "PAGEDOWN": {'label': 'pagedwn', 'key_code': 'Key.page_down', 'character': None, 'arg': None},
-        "LEFTARROW": {'label': 'left', 'key_code': 'Key.left', 'character': None, 'arg': None},
-        "RIGHTARROW": {'label': 'right', 'key_code': 'Key.right', 'character': None, 'arg': None},
-        "UPARROW": {'label': 'up', 'key_code': 'Key.up', 'character': None, 'arg': None},
-        "DOWNARROW": {'label': 'down', 'key_code': 'Key.down', 'character': None, 'arg': None},
-        "ESCAPE": {'label': 'esc', 'key_code': 'Key.esc', 'character': None, 'arg': None},
-        "HOME": {'label': 'home', 'key_code': 'Key.home', 'character': None, 'arg': None},
-        "END": {'label': 'end', 'key_code': 'Key.end', 'character': None, 'arg': None},
-        "DELETE": {'label': 'del', 'key_code': 'Key.delete', 'character': None, 'arg': None},
-        "SHIFT": {'label': 'shift', 'key_code': 'Key.shift', 'character': None, 'arg': None},
-        "RSHIFT": {'label': 'rshift', 'key_code': 'Key.rshift', 'character': None, 'arg': None},
-        "LSHIFT": {'label': 'lshift', 'key_code': 'Key.lshift', 'character': None, 'arg': None},
-        "CTRL": {'label': 'ctrl', 'key_code': 'Key.ctrl', 'character': None, 'arg': None},
-        "RCTRL": {'label': 'rctrl', 'key_code': 'Key.rctrl', 'character': None, 'arg': None},
-        "LCTRL": {'label': 'lctrl', 'key_code': 'Key.lctrl', 'character': None, 'arg': None},
-        "ALT": {'label': 'alt', 'key_code': 'Key.alt', 'character': None, 'arg': None},
-        "WINDOWS": {'label': 'win', 'key_code': 'Key.cmd', 'character': None, 'arg': None},
-        "CAPSLOCK": {'label': 'caps', 'key_code': 'Key.caps_lock', 'character': None, 'arg': None},
-        "F1": {'label': 'F1', 'key_code': 'Key.f1', 'character': None, 'arg': None},
-        "F2": {'label': 'F2', 'key_code': 'Key.f2', 'character': None, 'arg': None},
-        "F3": {'label': 'F3', 'key_code': 'Key.f3', 'character': None, 'arg': None},
-        "F4": {'label': 'F4', 'key_code': 'Key.f4', 'character': None, 'arg': None},
-        "F5": {'label': 'F5', 'key_code': 'Key.f5', 'character': None, 'arg': None},
-        "F6": {'label': 'F6', 'key_code': 'Key.f6', 'character': None, 'arg': None},
-        "F7": {'label': 'F7', 'key_code': 'Key.f7', 'character': None, 'arg': None},
-        "F8": {'label': 'F8', 'key_code': 'Key.f8', 'character': None, 'arg': None},
-        "F9": {'label': 'F9', 'key_code': 'Key.f9', 'character': None, 'arg': None},
-        "F10": {'label': 'F10', 'key_code': 'Key.f10', 'character': None, 'arg': None},
-        "F11": {'label': 'F11', 'key_code': 'Key.f11', 'character': None, 'arg': None},
-        "F12": {'label': 'F12', 'key_code': 'Key.f12', 'character': None, 'arg': None},
+        "ENTER": {'label': 'ENTER', 'key_code': 'r', 'character': '\n', 'arg': None},
+        "SPACE": {'label': 'space', 'key_code': 'space', 'character': ' ', 'arg': None},
+        "BACKSPACE": {'label': 'bckspc', 'key_code': 'backspace', 'character': '\x08', 'arg': None},
+        "TAB": {'label': 'tab', 'key_code': 'tab', 'character': '\t', 'arg': None},
+        "PAGEUP": {'label': 'pageup', 'key_code': 'page_up', 'character': None, 'arg': None},
+        "PAGEDOWN": {'label': 'pagedwn', 'key_code': 'page_down', 'character': None, 'arg': None},
+        "LEFTARROW": {'label': 'left', 'key_code': 'left', 'character': None, 'arg': None},
+        "RIGHTARROW": {'label': 'right', 'key_code': 'right', 'character': None, 'arg': None},
+        "UPARROW": {'label': 'up', 'key_code': 'up', 'character': None, 'arg': None},
+        "DOWNARROW": {'label': 'down', 'key_code': 'down', 'character': None, 'arg': None},
+        "ESCAPE": {'label': 'esc', 'key_code': 'esc', 'character': None, 'arg': None},
+        "HOME": {'label': 'home', 'key_code': 'home', 'character': None, 'arg': None},
+        "END": {'label': 'end', 'key_code': 'end', 'character': None, 'arg': None},
+        "DELETE": {'label': 'del', 'key_code': 'delete', 'character': None, 'arg': None},
+        "SHIFT": {'label': 'shift', 'key_code': 'shift', 'character': None, 'arg': None},
+        "RSHIFT": {'label': 'rshift', 'key_code': 'right shift', 'character': None, 'arg': None},
+        "LSHIFT": {'label': 'lshift', 'key_code': 'left shift', 'character': None, 'arg': None},
+        "CTRL": {'label': 'ctrl', 'key_code': 'trl', 'character': None, 'arg': None},
+        "RCTRL": {'label': 'rctrl', 'key_code': 'right ctrl', 'character': None, 'arg': None},
+        "LCTRL": {'label': 'lctrl', 'key_code': 'left ctrl', 'character': None, 'arg': None},
+        "ALT": {'label': 'alt', 'key_code': 'alt', 'character': None, 'arg': None},
+        "WINDOWS": {'label': 'win', 'key_code': 'cmd', 'character': None, 'arg': None},
+        "CAPSLOCK": {'label': 'caps', 'key_code': 'caps lock', 'character': None, 'arg': None},
+        "F1": {'label': 'F1', 'key_code': 'f1', 'character': None, 'arg': None},
+        "F2": {'label': 'F2', 'key_code': 'f2', 'character': None, 'arg': None},
+        "F3": {'label': 'F3', 'key_code': 'f3', 'character': None, 'arg': None},
+        "F4": {'label': 'F4', 'key_code': 'f4', 'character': None, 'arg': None},
+        "F5": {'label': 'F5', 'key_code': 'f5', 'character': None, 'arg': None},
+        "F6": {'label': 'F6', 'key_code': 'f6', 'character': None, 'arg': None},
+        "F7": {'label': 'F7', 'key_code': 'f7', 'character': None, 'arg': None},
+        "F8": {'label': 'F8', 'key_code': 'f8', 'character': None, 'arg': None},
+        "F9": {'label': 'F9', 'key_code': 'f9', 'character': None, 'arg': None},
+        "F10": {'label': 'F10', 'key_code': 'f10', 'character': None, 'arg': None},
+        "F11": {'label': 'F11', 'key_code': 'f11', 'character': None, 'arg': None},
+        "F12": {'label': 'F12', 'key_code': 'f12', 'character': None, 'arg': None},
         "REPEATMODE": {'label': 'repeat', 'key_code': 'unknown', 'character': None, 'arg': 0},
         "SOUND": {'label': 'snd', 'key_code': 'unknown', 'character': None, 'arg': 8},
         "CODESET": {'label': 'code', 'key_code': 'unknown', 'character': None, 'arg': 9},
@@ -530,11 +530,11 @@ class ActionKeyStroke(Action):
                 keyboard.press(self.key)
                 keyboard.release(self.key)
                 # Update typestate based on key action.
-                if hasattr(self.key, 'character'):  # Ensure 'character' attribute exists.
-                    if self.key.character == '\b':  # Assuming backspace is represented as '\b'.
-                        typestate.popchar()
-                    else:
-                        typestate.pushchar(self.key.character)
+                key_char = self.item.get('character') 
+                if key_char == '\x08': 
+                    typestate.popchar()
+                else:
+                    typestate.pushchar(key_char)
         except Exception as e:
             logging.error(f"Error during key press/release: {e}")
 
