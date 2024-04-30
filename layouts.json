@@ -1,6 +1,7 @@
 {
   "layouts": {
     "typing": {
+        "supports_prediction": true,
         "column_len": 15,
         "items": [
             { "code": "111111", "action": "PREDICTION_SELECT", "target": 0 },
@@ -64,6 +65,7 @@
         ]
     },
     "main": {
+      "supports_prediction": true,
       "column_len": 15,
       "items": [
         { "code": "12", "action": "A" },
@@ -143,7 +145,6 @@
         { "code": "21211", "action": "END" },
         { "code": "12112", "action": "INSERT" },
         { "code": "21121", "action": "DELETE" },
-        { "code": "221111", "action": "STARTMENU" },
         { "code": "11212", "action": "SHIFT" },
         { "code": "12122", "action": "ALT" },
         { "code": "21212", "action": "CTRL" },
@@ -170,6 +171,7 @@
       ]
     },
     "mouse": {
+      "supports_prediction": false,
       "column_len": 2,
       "items": [
         { "code": "1", "action": "MOUSERIGHT5" },
@@ -207,6 +209,7 @@
       ]
     },
     "number": {
+      "supports_prediction": false,
       "column_len": 6,
       "items": [
         { "code": "1", "action": "ONE" },
@@ -229,5 +232,5 @@
       ]
     }
   },
-  "mainlayout": "main"
+  "mainlayout": "typing"
 }

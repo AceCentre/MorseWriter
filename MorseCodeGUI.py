@@ -263,19 +263,23 @@ class ConfigManager:
             key_code = value['key_code']
             character = value['character']
             arg = value['arg']
-    
-            # Use the correct capturing of loop variables
-            action_key = key.upper()
-            actions[action_key] = lambda item, lbl=label, kc=key_code, char=character, a=arg: ActionKeyStroke(
-                {'label': lbl, 'key_code': kc, 'character': char, 'arg': a}, kc)
+            toggle_action = value.get('toggle_action', False)
+            
+            # Correctly capture the loop variables using default values in lambda
+            actions[key.upper()] = lambda item, win=window, lbl=label, kc=key_code, char=character, a=arg, tog=toggle_action: ActionKeyStroke(
+                {'label': lbl, 'key_code': kc, 'character': char, 'arg': a}, kc, tog, win)
         
         # Define special actions with correct lambda capturing
-        actions["CHANGELAYOUT"] = lambda item, win=window: ChangeLayoutAction(item, win)
+        actions["CHANGELAYOUT"] = lambda item, win=window: ChangeLayoutAction(item, win.changeLayout)
         actions["PREDICTION_SELECT"] = lambda item, win=window: PredictionSelectLayoutAction(
             item, get_predictions_func=win.getTypeStatePredictions)
-        actions["KEYSTROKE"] = lambda item, kd=self.key_data: ActionKeyStroke(item, kd[item['action'].upper()])
+    
+        # Assuming the action name is stored in item['action'] and matches keys in key_data
+        actions["KEYSTROKE"] = lambda item, kd=self.key_data, win=window: ActionKeyStroke(
+            item, kd[item['action'].upper()]['key_code'], win=win)
     
         return actions
+
         
 class TypeState(pressagio.callback.Callback):
     def __init__ (self):
@@ -487,15 +491,14 @@ class ActionLegacy (Action):
             logging.debug(f"[ActionLegacy-perform] No action defined for key: {self.key}")
     
     def handleRepeatMode(self):
-        global repeaton
-        if repeaton:
+        if self.repeaton:
             if self.config.get('debug', False):
                 logging.info("repeat OFF")
-            repeaton = False
+            self.repeaton = False
         else:
             if self.config.get('debug', False):
                 logging.info("repeat ON")
-            repeaton = True
+            self.repeaton = True
     
 
 class KeyStroke (object):
@@ -506,16 +509,26 @@ class KeyStroke (object):
         self.character = character
         
 class ActionKeyStroke(Action):
-    def __init__(self, item, key, toggle_action=False):
+    def __init__(self, item, key, toggle_action=False, window=None):
         super(ActionKeyStroke, self).__init__(item)
-        self.key = key  # Assuming 'key' contains both the key code and character information.
+        self.key = key 
         self.label = item.get('label', item.get('action'))
         self.toggle_action = toggle_action
+        self.window = window 
 
     @property
     def name(self):
         return self.key
-    
+
+    @property
+    def repeaton(self):
+        return self.window.repeaton  # Access dynamically
+
+    @property
+    def repeatkey(self):
+        return self.window.repeatkey  # Access dynamically
+
+
     def getlabel(self):
         # Returns the label associated with this action, if any.
         return self.label
@@ -530,29 +543,56 @@ class ActionKeyStroke(Action):
                 else:
                     keyboard.press(self.key)
             else:
-                keyboard.press(self.key)
-                keyboard.release(self.key)
-                # Update typestate based on key action.
-                key_char = self.item.get('character') 
-                if key_char == '\x08': 
-                    typestate.popchar()
+                if self.repeaton:
+                    if self.repeatkey is None:
+                        self.repeatkey = self.key
+                    else:
+                        logging.debug(f"[ActionKeyStroke] repeat code: {self.key}")
+                        keyboard.press(self.repeatkey)
+                        keyboard.press_and_release(self.key)
+                        keyboard.release(self.repeatkey)
                 else:
-                    typestate.pushchar(key_char)
+                    logging.debug(f"[ActionKeyStroke] pressing {self.key}")
+                    keyboard.press_and_release(self.key)
+                    # Update typestate based on key action.
+                    if self.window.typestate is not None:
+                        key_char = self.item.get('character')  # Assuming 'character' is stored in 'item'
+                        if self.key in ['backspace', 'delete']:
+                            logging.debug(f"[ActionKeyStroke] popchar")
+                            self.window.typestate.popchar()
+                        else:
+                            logging.debug(f"[ActionKeyStroke] pushchar")
+                            self.window.typestate.pushchar(key_char)
         except Exception as e:
-            logging.error(f"Error during key press/release: {e}")
+            logging.error(f"[ActionKeyStroke] Error during key press/release: {e}")
+
 
 class ChangeLayoutAction(Action):
-    def __init__(self, item, window):
+    def __init__(self, item, change_layout_callback):
         super().__init__(item)
-        self.window = window
+        self.change_layout_callback = change_layout_callback
+        self.layout_name = item['target']
 
     def perform(self):
-        target_layout = self.item.get('target')
-        if target_layout and target_layout in self.window.layoutManager.layouts:
-            # Use the layout name to set the active layout
-            self.window.layoutManager.set_active(target_layout)
+        # Now call the callback with the stored layout name
+        if callable(self.change_layout_callback):
+            self.change_layout_callback(self.layout_name)
         else:
-            raise ValueError(f"Layout '{target_layout}' not found")
+            raise ValueError("Change Layout callback is not callable")
+
+#     def __init__(self, item, window):
+#         super().__init__(item)
+#         self.window = window
+# 
+#     def perform(self):
+#         target_layout = self.item.get('target')
+#         if target_layout and target_layout in self.window.layoutManager.layouts:
+#             # Use the layout name to set the active layout
+#             self.window.layoutManager.set_active(target_layout)
+#             self.codeslayoutview.changeLayoutSignal.emit()
+#         else:
+#             raise ValueError(f"Layout '{target_layout}' not found")
+
 
 class PredictionSelectLayoutAction(Action):
     def __init__(self, item, get_predictions_func):
@@ -609,24 +649,27 @@ class Window(QDialog):
         self.currentCharacter = []
         self.repeaton = False 
         self.repeatkey = None
-        logging.debug("Setting active layout to: %s", self.layoutManager.main_layout_name)
+        logging.debug("[Window init] Setting active layout to: %s", self.layoutManager.main_layout_name)
         self.layoutManager.set_active(self.layoutManager.main_layout_name)
-        logging.debug("Active layout successfully set to: %s", self.layoutManager.active_layout_name)
+        logging.debug("[Window init] Active layout successfully set to: %s", self.layoutManager.active_layout_name)
         # Check for specific layout types that may require special handling
         if self.layoutManager.main_layout_name == 'typing':
-            self.typestate = TypeState()  # Assuming TypeState is defined elsewhere
+            self.typestate = TypeState() 
         else:
             self.typestate = None
-        logging.debug(f"layout that is active is: {self.layoutManager.main_layout_name} ")
+        logging.debug(f"[Window init] layout that is active is: {self.layoutManager.main_layout_name} ")
         self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.get_active_layout(), self.config)
+        # I Think this should be what we really need to do - but its not working..  
+        #self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.get_active_layout(), self.config, self)
         self.codeslayoutview.show()
+        logging.debug(f"[Window init] Initial visibility status: {self.codeslayoutview.isVisible()}")
        
     def postInit(self):
         # Initialize components that depend on actions being available
         self.actions = self.configManager.actions
         self.keystrokes = self.configManager.keystrokes
         self.keystrokemap = self.configManager.keystrokemap
-        self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.get_active_layout(), self.config, self)
+        #self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.get_active_layout(), self.config, self)
         self.createIconGroupBox()
         self.createActions()
         self.createTrayIcon()
@@ -670,22 +713,26 @@ class Window(QDialog):
             self.iconComboBoxSoundDah.setEnabled(False)
         
     def changeLayout(self, layout_name):
-        # Check if the layout exists in the layoutManager by name
-        if layout_name not in self.layoutManager.layouts:
-            raise ValueError("Requested layout does not exist")
-        
-        # Use the layout name to set the active layout
-        self.layoutManager.set_active(layout_name)
-    
-        # Retrieve the new layout object now that it's confirmed to exist and is active
-        new_layout = self.layoutManager.layouts[layout_name]
-    
-        # Reinitialize the layout view widget
-        if self.codeslayoutview:
-            self.codeslayoutview.setParent(None)
-            self.codeslayoutview.deleteLater()  # Properly delete the widget
-        self.codeslayoutview = CodesLayoutViewWidget(new_layout, self.config, self)
-        self.codeslayoutview.show()
+        logging.debug(f"[Window changeLayout] Attempting to change layout to: {layout_name}")
+        if layout_name in self.layoutManager.layouts:
+            self.layoutManager.set_active(layout_name)
+            logging.debug(f"[Window changeLayout] Layout set active: {layout_name}")
+            if self.codeslayoutview:
+                self.codeslayoutview.hide()
+                self.codeslayoutview.deleteLater()
+                logging.debug("[Window changeLayout] Previous layout view deleted")
+            self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.get_active_layout(), self.config, self)
+            self.codeslayoutview.show()
+            logging.debug(f"[Window changeLayout] CodesLayoutViewWidget is visible: {self.codeslayoutview.isVisible()}")
+            
+            # Explicitly call show() on both the widget and the window
+            self.codeslayoutview.show()
+            self.show()
+            logging.debug(f"[Window changeLayout] Window is visible: {self.isVisible()}")
+        else:
+            logging.error(f"[Window changeLayout] Layout change failed: {layout_name} not found.")
+
+
 
     def getTypeStatePredictions(self):
         if self.typestate:
@@ -1049,12 +1096,11 @@ class Window(QDialog):
             active_layout = self.layoutManager.get_active_layout()
             items = active_layout.get('items', [])
             item = next((item for item in items if item.get('code') == morse_code), None)
+            print(item)
     
             if item and '_action' in item:
                 action = item['_action']
-                action.perform()
-                if isinstance(action, ActionKeyStroke):
-                    self.typestate.pushchar(action.key)  # Update only after the action is confirmed
+                action.perform()                
                 logging.info(f"[endCharacter] Action performed for Morse code: {morse_code}")
             else:
                 logging.warning(f"[endCharacter] No action found for Morse code: {morse_code}")
@@ -1138,21 +1184,21 @@ class CodeRepresentation(QWidget):
         self.tickDitDah()
     
     def Dit(self):
-        logging.debug(f"[CodeRepresentation] Attempting Dit. Enabled: {self.is_enabled}, Disabled Chars: {self.disabledchars}, Code Length: {len(self.code)}")
+        #logging.debug(f"[CodeRepresentation] Attempting Dit. Enabled: {self.is_enabled}, Disabled Chars: {self.disabledchars}, Code Length: {len(self.code)}")
         if (self.enabled()):
             if ((self.disabledchars < len(self.code)) and self.code[self.disabledchars] == '.'):
                 self.tickDitDah()
-                logging.debug("[CodeRepresentation] Dit successful.")
+                #logging.debug("[CodeRepresentation] Dit successful.")
             else:
                 self.disable()
                 #logging.debug("[CodeRepresentation] Dit failed - disabling.")
 
     def Dah(self):
-        logging.debug(f"[CodeRepresentation] Attempting Dah. Enabled: {self.is_enabled}, Disabled Chars: {self.disabledchars}, Code Length: {len(self.code)}")
+        #logging.debug(f"[CodeRepresentation] Attempting Dah. Enabled: {self.is_enabled}, Disabled Chars: {self.disabledchars}, Code Length: {len(self.code)}")
         if (self.enabled()):
             if ((self.disabledchars < len(self.code)) and self.code[self.disabledchars] == '-'):
                 self.tickDitDah()
-                logging.debug("[CodeRepresentation] Dah successful.")
+                #logging.debug("[CodeRepresentation] Dah successful.")
             else:
                 self.disable()
                 #logging.debug("[CodeRepresentation] Dah failed - disabling.")
@@ -1165,16 +1211,14 @@ class CodeRepresentation(QWidget):
 
 class CodesLayoutViewWidget(QWidget):
     feedbackSignal = pyqtSignal()
-    changeLayoutSignal = pyqtSignal()
-    hideSignal = pyqtSignal()
-    showSignal = pyqtSignal()
-    
-    
+    changeLayoutSignal = pyqtSignal(str)
+        
     def __init__(self, layout, config, parent=None):
         super(CodesLayoutViewWidget, self).__init__(parent)
         self.layout = layout
         self.config = config
-        self.setupLayout(self.layout)
+        self.changeLayoutSignal.connect(self.changeLayout)
+        self.setupLayout(layout)
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.adjustPosition()
 
@@ -1190,6 +1234,16 @@ class CodesLayoutViewWidget(QWidget):
             coderep.toggled = get_keystroke_state("CAPSLOCK")["locked"]# (state & 1) == 1
             coderep.updateView()
          
+    def changeLayout(self, layout_name):
+        logging.debug(f"[CodesLayoutViewWidget changeLayout] Changing to  {layout_name} ")
+        new_layout = self.parent().layoutManager.layouts.get(layout_name, None)
+        if new_layout:
+            self.layout = new_layout
+            self.setupLayout(new_layout)
+            self.show()
+        else:
+            logging.error(f"[CodesLayoutViewWidget changeLayout] Layout {layout_name} not found.")
+    
 
     def adjustPosition(self):
         #logging.debug("Current config: %s", self.config)
@@ -1212,6 +1266,7 @@ class CodesLayoutViewWidget(QWidget):
         self.move(x_position, y_position)
 
     def setupLayout(self, layout):
+        logging.debug(f"[CodesLayoutViewWidget setupLayout] Setting up  layout ")
         self.vlayout = QVBoxLayout()
         self.setLayout(self.vlayout)
         hlayout = QHBoxLayout()
@@ -1257,6 +1312,7 @@ class CodesLayoutViewWidget(QWidget):
     
     def closeEvent(self, event):
         window.backToSettings()
+    
     
 def get_keystroke_state(name):
     state = {
