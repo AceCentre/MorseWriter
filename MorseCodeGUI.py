@@ -213,10 +213,11 @@ class ConfigManager:
         keystrokemap = {}
         keystrokes = []
         for key, data in self.key_data.items():
-            stroke = KeyStroke(key, data['label'], data['key_code'], data['character'])
+            stroke = KeyStroke(key.upper(), data['label'], data['key_code'], data['character'])
             keystrokes.append(stroke)
-            keystrokemap[key] = stroke
+            keystrokemap[key.upper()] = stroke
         return keystrokemap, keystrokes
+
     
     def read_config(self):
         if self.config_file and os.path.exists(self.config_file):
@@ -501,12 +502,13 @@ class ActionLegacy (Action):
             self.repeaton = True
     
 
-class KeyStroke (object):
-     def __init__(self, name, label, key, character):
+class KeyStroke:
+    def __init__(self, name, label, key_code, character):
         self.name = name
         self.label = label
-        self.key = key
+        self.key_code = key_code 
         self.character = character
+
         
 class ActionKeyStroke(Action):
     def __init__(self, item, key, toggle_action=False, window=None):
@@ -687,20 +689,30 @@ class Window(QDialog):
 
        
     def get_configured_keys(self):
-        key_names = []
-        if self.config.get('keylen', 1) >= 1:
-            key_names.append(self.config.get('keyone', 'space'))  # Default to SPACE if not set
-        if self.config.get('keylen', 1) >= 2:
-            key_names.append(self.config.get('keytwo', 'enter'))  # Default to ENTER if not set
-        if self.config.get('keylen', 1) == 3:
-            key_names.append(self.config.get('keythree', 'right ctrl'))  # Default to RCTRL if not set
-        return key_names
+        key_codes = []
+        default_keys = {'keyone': 'SPACE', 'keytwo': 'ENTER', 'keythree': 'RIGHT CTRL'}
+    
+        for key in ['keyone', 'keytwo', 'keythree']:
+            config_key = self.config.get(key, default_keys[key])
+            try:
+                # Ensure keys are fetched in uppercase, which seems to be the format used in keystrokemap
+                key_code = self.keystrokemap[config_key.upper()].key_code
+                key_codes.append(key_code)
+            except KeyError:
+                logging.error(f"Configured key '{config_key}' not found in keystroke map.")
+                raise ValueError(f"Configured key '{config_key}' is invalid.")
+            except AttributeError:
+                logging.error(f"'KeyStroke' object for '{config_key}' is missing 'key_code' attribute.")
+                raise
+    
+        return key_codes
+
     
     
     def startKeyListener(self):
-        key_names = self.get_configured_keys()  # this should return keys in the correct format already
+        key_codes = self.get_configured_keys() 
         if not self.listenerThread:
-            self.listenerThread = KeyListenerThread(configured_keys=key_names)
+            self.listenerThread = KeyListenerThread(configured_keys=key_codes)
             self.listenerThread.keyEvent.connect(self.handle_key_event)
             self.listenerThread.start()
     
@@ -827,10 +839,10 @@ class Window(QDialog):
         inputSettingsLayout.addWidget(inputRadioGroup)
         
         inputKeyComboBoxesLayout = QHBoxLayout()
-         # Filter the keystrokes to only include those keys that are specified in morse_keys
-        morse_keys = ["SPACE", "ENTER", "ONE", "TWO", "Z", "F8", "F9"]
-        filtered_keystrokes = [(key, self.keystrokemap[key].label) for key in morse_keys if key in self.keystrokemap]
 
+         # Filter the keystrokes to only include those keys that are specified in morse_keys
+        morse_keys = ["SPACE", "ENTER", "ONE", "TWO", "Z", "F8", "F9", "RCTRL", "LCTRL", "RSHIFT", "LSHIFT", "ALT"]
+        filtered_keystrokes = [(key, self.keystrokemap[key].label) for key in morse_keys if key in self.keystrokemap]
         
         # Set up the combo box for the first key using the filtered list
         self.iconComboBoxKeyOne = self.mkKeyStrokeComboBox(
@@ -843,11 +855,9 @@ class Window(QDialog):
             filtered_keystrokes,
             self.config.get('keytwo')
         )
-        special_keys = ["RCTRL", "LCTRL", "RSHIFT", "LSHIFT", "ALT"]
-        special_keystrokes = [(key, self.keystrokemap[key].label) for key in special_keys if key in self.keystrokemap]
     
         self.iconComboBoxKeyThree = self.mkKeyStrokeComboBox(
-            special_keystrokes,
+            filtered_keystrokes,
             self.config.get('keythree')
         )
         
@@ -962,10 +972,8 @@ class Window(QDialog):
         self.iconGroupBox.setLayout(inputSettingsLayout)
 
     def saveSettings (self):
-        config = self.collect_config()
-        data = dict()
-        data.update(config)
-        saveConfig(configfile, data)
+        self.configManager.collect_config()
+        self.configManager.save_config()
         
     def toggleOnOff(self):
         if self.config['off']:
