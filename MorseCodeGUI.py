@@ -643,6 +643,7 @@ class Window(QDialog):
         self.lastKeyDownTime = None
         self.endCharacterTimer = None
         self.inputDisabled = False
+        self.codeslayoutview = None
 
     def load_default_config(self):
         return DEFAULT_CONFIG.copy()
@@ -661,11 +662,11 @@ class Window(QDialog):
             self.typestate = None
         logging.debug(f"[Window init] layout that is active is: {self.layoutManager.main_layout_name} ")
         self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.get_active_layout(), self.config)
-        # I Think this should be what we really need to do - but its not working..  
-        #self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.get_active_layout(), self.config, self)
+        #  I Think this should be what we really need to do - but it's not working.
+        # self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.get_active_layout(), self.config, self)
         self.codeslayoutview.show()
         logging.debug(f"[Window init] Initial visibility status: {self.codeslayoutview.isVisible()}")
-       
+
     def postInit(self):
         # Initialize components that depend on actions being available
         self.actions = self.configManager.actions
@@ -733,13 +734,13 @@ class Window(QDialog):
                 self.codeslayoutview.hide()
                 self.codeslayoutview.deleteLater()
                 logging.debug("[Window changeLayout] Previous layout view deleted")
-            self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.get_active_layout(), self.config, self)
+            self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.get_active_layout(), self.config)
             self.codeslayoutview.show()
             logging.debug(f"[Window changeLayout] CodesLayoutViewWidget is visible: {self.codeslayoutview.isVisible()}")
-            
+
             # Explicitly call show() on both the widget and the window
-            self.codeslayoutview.show()
-            self.show()
+            # self.codeslayoutview.show()
+            # self.show()
             logging.debug(f"[Window changeLayout] Window is visible: {self.isVisible()}")
         else:
             logging.error(f"[Window changeLayout] Layout change failed: {layout_name} not found.")
@@ -1229,6 +1230,7 @@ class CodesLayoutViewWidget(QWidget):
         self.setupLayout(layout)
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.adjustPosition()
+        logging.debug(f"[CodesLayoutViewWidget __init__]")
 
     def onFeedback (self):
         for keyname in ("ALT", "SHIFT", "CTRL"):
@@ -1245,6 +1247,7 @@ class CodesLayoutViewWidget(QWidget):
     def changeLayout(self, layout_name):
         logging.debug(f"[CodesLayoutViewWidget changeLayout] Changing to  {layout_name} ")
         new_layout = self.parent().layoutManager.layouts.get(layout_name, None)
+        logging.debug(f"[CodesLayoutViewWidget changeLayout] Changing to to {layout_name} ")
         if new_layout:
             self.layout = new_layout
             self.setupLayout(new_layout)
@@ -1274,7 +1277,7 @@ class CodesLayoutViewWidget(QWidget):
         self.move(x_position, y_position)
 
     def setupLayout(self, layout):
-        logging.debug(f"[CodesLayoutViewWidget setupLayout] Setting up  layout ")
+        logging.debug(f"[CodesLayoutViewWidget setupLayout] Setting up {layout} ")
         self.vlayout = QVBoxLayout()
         self.setLayout(self.vlayout)
         hlayout = QHBoxLayout()
