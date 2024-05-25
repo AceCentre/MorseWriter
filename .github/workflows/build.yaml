@@ -3,14 +3,14 @@ name: Build MorseWriter
 on:
   push:
     branches:
-      - main  # Change this to your default branch if it's not main
+      - main
   pull_request:
     branches:
-      - main  # Change this to your default branch if it's not main
+      - main
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
       - name: Checkout repository
@@ -19,20 +19,28 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.11.4'  # Specify the Python version you need
+          python-version: '3.8'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
-          pip install -r requirements.txt  # Install other dependencies if you have a requirements.txt
+          pip install -r requirements.txt
 
       - name: Build with PyInstaller
         run: |
           pyinstaller --clean MorseCodeGUI.spec
 
+      - name: Download Inno Setup
+        run: |
+          choco install innosetup --yes
+
+      - name: Build Installer
+        run: |
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" MorseWriterInstaller.iss
+
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: morsewriter-build
-          path: dist/
+          name: morsewriter-installer
+          path: Output/MorseWriter-Installer.exe
