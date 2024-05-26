@@ -33,5 +33,5 @@ exe = EXE(
     upx=True,
     runtime_tmpdir=None,
     console=False,  # Set to False to run without a command window
-    icon='res/MorseWriter.ico'
+    icon='res/MorseWriterIcon.ico'
 )
