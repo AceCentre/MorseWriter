@@ -2,7 +2,7 @@ MorseWriter
 -----------
 
 <p align="center">
-  <img src="https://github.com/willwade/MorseWriter/raw/master/icon.png" height="128" width="128"  />
+  <img src="https://github.com/willwade/MorseWriter/raw/master/res/MorseWriterLogo.jpeg" height="128" width="128"  />
   <img src="https://github.com/willwade/MorseWriter/raw/master/screenshot1.png" height="111" width="194" />
   <img src="https://github.com/willwade/MorseWriter/raw/master/screenshot2.png" height="106" width="131" />
 </p>
@@ -14,7 +14,7 @@ For code, bug tracking and feature requests see [https://github.com/willwade/Mor
 
 **Requirements**
 
-Pretty multiplatform. Well should be..
+Pretty multiplatform. Well should be..although hideous problem on MacOS. 
 
 **Install with virtualenv (windows)**
 
