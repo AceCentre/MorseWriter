@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import sys
+import platform
 import threading
 import time
 from collections import OrderedDict
@@ -55,6 +56,7 @@ DEFAULT_CONFIG = {
   "withsound": True,
   "SoundDit": "res/dit_sound.wav",
   "SoundDah": "res/dah_sound.wav",
+  "SoundTyping": "res/typing_sound.wav",
   "debug": True,
   "off": False,
   "fontsizescale": 100,
@@ -65,6 +67,22 @@ DEFAULT_CONFIG = {
   "winposx": 10,
   "winposy": 10
 }
+
+def get_user_data_dir(app_name="MorseWriter"):
+    """
+    Returns the appropriate directory for storing user data based on the OS and whether the app is frozen.
+    """
+    if hasattr(sys, 'frozen'):
+        # If the application is frozen, use the appropriate platform-specific directory
+        if platform.system() == 'Windows':
+            return os.path.join(os.getenv('LOCALAPPDATA'), app_name)
+        elif platform.system() == 'Darwin':
+            return os.path.join(os.path.expanduser('~/Library/Application Support/'), app_name)
+        else:
+            return os.path.join(os.path.expanduser('~/.config/'), app_name)
+    else:
+        # Use a local directory when running in development
+        return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_data')
 
 class AudioDeviceSelector(QWidget):
     def __init__(self):
@@ -267,7 +285,7 @@ class ConfigManager:
         "MOUSEDOWNRIGHT40": {'label': 'ms rightdown 40', 'key_code': 'unknown', 'character': None, 'arg': 2},
         "MOUSEDOWNRIGHT250": {'label': 'ms rightdown 250', 'key_code': 'unknown', 'character': None, 'arg': 3}
         }
-        self.config_file = config_file
+        self.config_file = config_file or os.path.join(user_data_dir, 'config.json')
         self.default_config = default_config
         self.keystrokemap, self.keystrokes = self.initKeystrokeMap()
         self.config = self.read_config()
@@ -1070,7 +1088,7 @@ class Window(QDialog):
             self.fastMorseModeCheckbox.setEnabled(True)
 
     def saveSettings (self):
-        self.configManager.collect_config()
+        self.collect_config()
         self.configManager.save_config()
         
     def toggleOnOff(self):
@@ -1458,6 +1476,8 @@ class CustomApplication(QApplication):
 
 
 if __name__ == '__main__':
+    user_data_dir = get_user_data_dir()
+    os.makedirs(user_data_dir, exist_ok=True)
     app = CustomApplication(sys.argv)
     
     if not QSystemTrayIcon.isSystemTrayAvailable():
