@@ -8,6 +8,7 @@
   "withsound": true,
   "SoundDit": "res/dit_sound.wav",
   "SoundDah": "res/dah_sound.wav",
+  "SoundTyping": "res/typing_sound.wav",
   "debug": true,
   "off": false,
   "fontsizescale": "100",

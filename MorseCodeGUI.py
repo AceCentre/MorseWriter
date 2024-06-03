@@ -11,12 +11,13 @@ from enum import Enum
 from threading import Thread
 
 # Third-party imports
-from PyQt5.QtCore import QThread, pyqtSignal, QTimer, Qt
+from PyQt5.QtMultimedia import QAudioDeviceInfo, QAudioOutput
+from PyQt5.QtCore import QIODevice, QFile, QThread, pyqtSignal, QTimer, Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QAction, QCheckBox, QComboBox, QDialog, QGridLayout,
                              QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox,
                              QPushButton, QRadioButton, QSystemTrayIcon, QVBoxLayout,
-                             QWidget, QApplication, QMenu)
+                             QWidget, QApplication, QMenu, QFileDialog)
 from nava import play
 import keyboard
 import mouse
@@ -64,6 +65,69 @@ DEFAULT_CONFIG = {
   "winposx": 10,
   "winposy": 10
 }
+
+class AudioDeviceSelector(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle('Select Audio Device')
+        self.layout = QVBoxLayout()
+
+        self.label = QLabel('Select Audio Device:')
+        self.layout.addWidget(self.label)
+
+        self.device_combo = QComboBox()
+        self.devices = self.list_audio_devices()
+        for device in self.devices:
+            self.device_combo.addItem(device.deviceName(), device)
+        self.device_combo.currentIndexChanged.connect(self.device_changed)
+        self.layout.addWidget(self.device_combo)
+
+        self.file_button = QPushButton('Select Audio File')
+        self.file_button.clicked.connect(self.select_audio_file)
+        self.layout.addWidget(self.file_button)
+
+        self.setLayout(self.layout)
+        self.audio_file = None
+        self.selected_device = None
+
+    def list_audio_devices(self):
+        """
+        List available audio devices.
+        
+        :return: list of QAudioDeviceInfo
+        """
+        return QAudioDeviceInfo.availableDevices(QAudioOutput.AudioOutput)
+
+    def device_changed(self, index):
+        self.selected_device = self.device_combo.itemData(index)
+        print(f"Selected device: {self.selected_device.deviceName()}")
+
+    def select_audio_file(self):
+        file_dialog = QFileDialog()
+        self.audio_file, _ = file_dialog.getOpenFileName(self, "Select Audio File", "", "Audio Files (*.wav)")
+        if self.audio_file:
+            print(f"Selected audio file: {self.audio_file}")
+            self.play_audio_device(self.audio_file, self.selected_device)
+
+    def play_audio_device(self, wav_file, device):
+        """
+        Play a WAV file on the selected audio device.
+
+        :param wav_file: Path to the WAV file
+        :type wav_file: str
+        :param device: QAudioDeviceInfo for the audio device
+        :type device: QAudioDeviceInfo
+        :return: None
+        """
+        file = QFile(wav_file)
+        if not file.open(QIODevice.ReadOnly):
+            print(f"Failed to open audio file: {wav_file}")
+            return
+
+        audio_format = device.preferredFormat()
+        audio_output = QAudioOutput(device, audio_format)
+        audio_output.start(file)
 
 
 class ConfigManager:
@@ -229,7 +293,9 @@ class ConfigManager:
                     return data
             except (FileNotFoundError, json.JSONDecodeError, ValueError) as e:
                 logging.warning(f"Error loading configuration: {e}")
-        return self.default_config.copy()
+        config = self.default_config.copy()
+        config['fastMorseMode'] = config.get('fastMorseMode', False)  # Default to False if not set
+        return config
         
 
     def update_keystrokes(self, data):
@@ -644,6 +710,7 @@ class Window(QDialog):
         self.endCharacterTimer = None
         self.inputDisabled = False
         self.codeslayoutview = None
+        self.fast_morse_mode_timer = None
 
     def load_default_config(self):
         return DEFAULT_CONFIG.copy()
@@ -764,6 +831,7 @@ class Window(QDialog):
             'withsound': self.withSound.isChecked(),
             'SoundDit': self.iconComboBoxSoundDit.itemData(self.iconComboBoxSoundDit.currentIndex()),
             'SoundDah': self.iconComboBoxSoundDah.itemData(self.iconComboBoxSoundDah.currentIndex()),
+            'SoundTyping': self.iconComboBoxSoundTyping.itemData(self.iconComboBoxSoundTyping.currentIndex()),
             'debug': self.withDebug.isChecked(),
             'off': False,
             'fontsizescale': float(self.fontSizeScaleEdit.text()) / 100.0,
@@ -772,7 +840,8 @@ class Window(QDialog):
             'winxaxis': "left" if self.keyWinPosXLeftRadio.isChecked() else "right",
             'winyaxis': "top" if self.keyWinPosYTopRadio.isChecked() else "bottom",
             'winposx': self.keyWinPosXEdit.text(),
-            'winposy': self.keyWinPosYEdit.text()
+            'winposy': self.keyWinPosYEdit.text(),
+            'fastMorseMode': self.fastMorseModeCheckbox.isChecked() if self.keySelectionRadioOneKey.isChecked() is False else False  # Update Fast Morse Mode
         }
         return config
 
@@ -821,7 +890,6 @@ class Window(QDialog):
             pass
         return box
 
-
     def createIconGroupBox(self):
         self.iconGroupBox = QGroupBox("Input Settings")
         
@@ -841,7 +909,7 @@ class Window(QDialog):
         
         inputKeyComboBoxesLayout = QHBoxLayout()
 
-         # Filter the keystrokes to only include those keys that are specified in morse_keys
+        # Filter the keystrokes to only include those keys that are specified in morse_keys
         morse_keys = ["SPACE", "ENTER", "ONE", "TWO", "Z", "F8", "F9", "RCTRL", "LCTRL", "RSHIFT", "LSHIFT", "ALT"]
         filtered_keystrokes = [(key, self.keystrokemap[key].label) for key in morse_keys if key in self.keystrokemap]
         
@@ -856,7 +924,7 @@ class Window(QDialog):
             filtered_keystrokes,
             self.config.get('keytwo')
         )
-    
+
         self.iconComboBoxKeyThree = self.mkKeyStrokeComboBox(
             filtered_keystrokes,
             self.config.get('keythree')
@@ -867,6 +935,7 @@ class Window(QDialog):
         inputKeyComboBoxesLayout.addWidget(self.iconComboBoxKeyThree)
         inputSettingsLayout.addLayout(inputKeyComboBoxesLayout)
 
+        # Connect the radio buttons to updateFastMorseModeAvailability
         self.keySelectionRadioOneKey.toggled.connect(self.iconComboBoxKeyTwo.hide)
         self.keySelectionRadioOneKey.toggled.connect(self.iconComboBoxKeyThree.hide)
         self.keySelectionRadioTwoKey.toggled.connect(self.iconComboBoxKeyTwo.show)
@@ -874,6 +943,10 @@ class Window(QDialog):
         self.keySelectionRadioThreeKey.toggled.connect(self.iconComboBoxKeyThree.show)
         self.keySelectionRadioThreeKey.toggled.connect(self.iconComboBoxKeyTwo.show)
         
+        self.keySelectionRadioOneKey.clicked.connect(self.updateFastMorseModeAvailability)
+        self.keySelectionRadioTwoKey.clicked.connect(self.updateFastMorseModeAvailability)
+        self.keySelectionRadioThreeKey.clicked.connect(self.updateFastMorseModeAvailability)
+
         for index, name in [[1,'One'], [2,'Two'], [3,'Three']]: 
             getattr(self, 'keySelectionRadio%sKey'%(name)).setChecked(self.config.get('keylen', 1) == index)
         
@@ -918,20 +991,34 @@ class Window(QDialog):
             ["Default", "res/dah_sound.wav"]  # Optional: default sound path
         ], self.config.get('SoundDah', "res/dah_sound.wav"))
 
+        self.iconComboBoxSoundTyping = self.mkKeyStrokeComboBox([
+            ["Typing Sound", "res/typing_sound.wav"],
+            ["Default", "res/typing_sound.wav"]
+        ], self.config.get('SoundTyping', "res/typing_sound.wav"))
+
+
         DitSoundLabel = QLabel("Dit sound: ")
         DahSoundLabel = QLabel("Dah sound: ")
+        TypingSoundLabel = QLabel("Typing sound: ")
         SoundConfigLayout = QGridLayout()
         SoundConfigLayout.addWidget(DitSoundLabel, 0, 0)
         SoundConfigLayout.addWidget(self.iconComboBoxSoundDit, 0, 1, 1, 4)
         SoundConfigLayout.addWidget(DahSoundLabel, 1, 0)
         SoundConfigLayout.addWidget(self.iconComboBoxSoundDah, 1, 1, 1, 4)
+        SoundConfigLayout.addWidget(TypingSoundLabel, 2, 0)
+        SoundConfigLayout.addWidget(self.iconComboBoxSoundTyping, 2, 1, 1, 4)
         
         self.autostartCheckbox = QCheckBox("Auto-Start")
         self.autostartCheckbox.setChecked(self.config.get("autostart", True))
         inputSettingsLayout.addWidget(self.autostartCheckbox)
         
+        # Add Fast Morse Mode checkbox
+        self.fastMorseModeCheckbox = QCheckBox("Fast Morse Mode")
+        self.fastMorseModeCheckbox.setChecked(self.config.get("fastMorseMode", False))
+        inputSettingsLayout.addWidget(self.fastMorseModeCheckbox)
+        self.updateFastMorseModeAvailability()  # Initialize the state based on the current key mode
+
         inputSettingsLayout.addLayout(SoundConfigLayout)
-        
         
         inputRadioGroup = QGroupBox("Align window horizontally from")
         posAxisLayout = QHBoxLayout()
@@ -971,6 +1058,16 @@ class Window(QDialog):
         inputSettingsLayout.addLayout(buttonsSec)
         
         self.iconGroupBox.setLayout(inputSettingsLayout)
+
+    def updateFastMorseModeAvailability(self):
+        """
+        Enable or disable Fast Morse Mode based on the selected key mode.
+        """
+        if self.keySelectionRadioOneKey.isChecked():
+            self.fastMorseModeCheckbox.setEnabled(False)
+            self.fastMorseModeCheckbox.setChecked(False)
+        else:
+            self.fastMorseModeCheckbox.setEnabled(True)
 
     def saveSettings (self):
         self.configManager.collect_config()
@@ -1043,20 +1140,37 @@ class Window(QDialog):
             # Start timing the key press
             self.lastKeyDownTime = time.time()
             logging.debug(f"[on_press] Key pressed: {key}")
+
+            if self.config.get('fastMorseMode', False) and not self.keySelectionRadioOneKey.isChecked():
+                self.fast_morse_mode_timer = QTimer(self)
+                self.fast_morse_mode_timer.timeout.connect(lambda: self.repeat_key(key))
+                self.fast_morse_mode_timer.start(100)  # Adjust the interval as needed
     
         except Exception as e:
             logging.warning(f"[on_press] Error on key press: {e}")
     
+    def repeat_key(self, key):
+        maxDitTime = float(self.config.get('maxDitTime', 350))
+        if key == 'SPACE':  # Example key for dot
+            self.addDit()
+        elif key == 'ENTER':  # Example key for dash
+            self.addDah()
+        self.startEndCharacterTimer()
+
     def check_disable_combination(self, key):
         # Example logic, replace with actual keys and states
         return key == 'P' and self.key_state['CTRL'] and self.key_state['SHIFT']
     
     def on_release(self, key):
         try:
+            if self.fast_morse_mode_timer:
+                self.fast_morse_mode_timer.stop()
+                self.fast_morse_mode_timer = None
+
             if self.lastKeyDownTime is not None:
                 duration = (time.time() - self.lastKeyDownTime) * 1000  # Duration in milliseconds
                 self.lastKeyDownTime = None  # Reset key down time
-    
+
                 # Check for dit or dah based on duration
                 maxDitTime = float(self.config.get('maxDitTime', 350))
                 if duration < maxDitTime:
@@ -1111,6 +1225,8 @@ class Window(QDialog):
                 action = item['_action']
                 action.perform()                
                 logging.info(f"[endCharacter] Action performed for Morse code: {morse_code}")
+                if self.config['withsound']:
+                    play(self.config.get('SoundTyping', 'res/typing_sound.wav'))  # Play typing sound
             else:
                 logging.warning(f"[endCharacter] No action found for Morse code: {morse_code}")
         except Exception as e:
