@@ -7,7 +7,7 @@ a = Analysis(
     pathex=['.'],
     binaries=[],
     datas=[
-        ('*.json', '.'),  # Include all JSON files in the current directory
+        ('user_data/*.json', '.'),  # Include all JSON files in the current directory
         ('res/*', 'res')  # Include all files in the 'res' directory
     ],
     hiddenimports=['PyQt5.sip'],
