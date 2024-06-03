@@ -1,13 +1,14 @@
 import sys
-import logging
-from PyQt5.QtCore import QThread, pyqtSignal, QTimer, Qt
-from PyQt5.QtWidgets import QApplication, QMainWindow
-from pynput.keyboard import Listener, Key, KeyCode
 import time
 import json
 import configparser
 import os
+import logging
+from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog
+from PyQt5.QtCore import QThread, pyqtSignal, QTimer
+import keyboard
 from nava import play
+
 
 # Local application/library specific imports
 import pressagio.callback
@@ -39,7 +40,6 @@ DEFAULT_CONFIG = {
   "winposx": 10,
   "winposy": 10
 }
-
 
 class PressagioCallback(pressagio.callback.Callback):
     def __init__(self, buffer):
@@ -116,56 +116,28 @@ class ConfigManager:
     def get_config(self):
         return self.config
         
-        
+
 class KeyListenerThread(QThread):
-    keyEvent = pyqtSignal(str, bool)
+    keyEvent = pyqtSignal(str, bool)  # Signal emitting key name and whether it's pressed or released
 
     def __init__(self, configured_keys):
         super().__init__()
         self.configured_keys = configured_keys
-        self.listener = None
 
     def run(self):
-        try:
-            self.listener = Listener(on_press=self.on_press, on_release=self.on_release)
-            self.listener.start()
-            self.listener.join()
-        except Exception as e:
-            logging.error(f"Listener failed: {e}")
+        # Use the keyboard library to hook to the specified keys
+        for key in self.configured_keys:
+            keyboard.on_press_key(key, lambda e: self.keyEvent.emit(e.name, True))
+            keyboard.on_release_key(key, lambda e: self.keyEvent.emit(e.name, False))
+        self.exec_()  # Start the Qt event loop to keep the thread running
 
     def stop(self):
-        if self.listener:
-            self.listener.stop()
-
-    def on_press(self, key):
-        try:
-            if any(key == k for k in self.configured_keys):
-                key_description = self.get_key_description(key)
-                self.keyEvent.emit(key_description, True)
-        except Exception as e:
-            logging.error(f"Error processing key press: {e}")
-
-    def on_release(self, key):
-        try:
-            if any(key == k for k in self.configured_keys):
-                key_description = self.get_key_description(key)
-                self.keyEvent.emit(key_description, False)
-        except Exception as e:
-            logging.error(f"Error processing key release: {e}")
-
-    def get_key_description(self, key):
-        if hasattr(key, 'char') and key.char:
-            return key.char
-        elif hasattr(key, 'name'):
-            return key.name
-        return 'Unknown key'
-
+        keyboard.unhook_all()  # Unhooks all keys when the thread is stopped
 
 class MainWindow(QMainWindow):
     def __init__(self, configManager):
         super().__init__()
-        self.setWindowTitle("Qt with Pynput")
-        self.lastKeyDownTime = None
+        self.setWindowTitle("Qt with Keyboard Library")
         self.resize(300, 200)
         self.configManager = configManager
         self.config = self.configManager.get_config()
@@ -176,10 +148,9 @@ class MainWindow(QMainWindow):
 
     def init(self):
         self.currentCharacter = []
-        self.repeaton = False 
-        self.repeatkey = None
-        self.typestate = TypeState()
-        
+        self.typestate = pressagio.Pressagio(pressagio.callback.Callback(), pressagioconfig)
+        self.lastKeyDownTime = None
+
     def get_configured_keys(self):
         key_names = []
         if self.config.get('keylen', 1) >= 1:
@@ -189,80 +160,41 @@ class MainWindow(QMainWindow):
         if self.config.get('keylen', 1) == 3:
             key_names.append(self.config.get('keythree', 'RCTRL'))  # Default to RCTRL if not set
         return key_names
-    
-    def startKeyListener(self):
-        pynputKeys = {
-            "SPACE": Key.space, "ENTER": Key.enter,
-            "ONE": KeyCode.from_char('1'), "TWO": KeyCode.from_char('2'),
-            "Z": KeyCode.from_char('z'), "X": KeyCode.from_char('x'),
-            "F8": Key.f8, "F9": Key.f9,
-            "RCTRL": Key.ctrl_r, "LCTRL": Key.ctrl_l,
-            "RSHIFT": Key.shift_r, "LSHIFT": Key.shift_l,
-            "LALT": Key.alt_l
-        }
-        logging.debug(f"Available keys in pynputKeys: {list(pynputKeys.keys())}")  # Print available keys
 
-        try:
-            key_names = self.get_configured_keys()  # Retrieve configured key names
-            logging.debug(f"Configured key names: {key_names}")
-            configured_keys = [pynputKeys[key.upper()] for key in key_names if key.upper() in pynputKeys]
-            logging.debug(f"Configured pynput keys: {configured_keys}")
-    
-            if not configured_keys:  # If no valid keys are configured, log and avoid starting the thread
-                logging.warning("No valid keys configured for KeyListenerThread.")
-                return
-    
-            if not self.listenerThread:
-                self.listenerThread = KeyListenerThread(configured_keys=configured_keys)
-                self.listenerThread.keyEvent.connect(self.handle_key_event)
-                self.listenerThread.start()
-            logging.debug("KeyListenerThread started successfully.")
-        except Exception as e:
-            logging.critical(f"Failed to start KeyListenerThread due to error: {str(e)}")
-            logging.critical(f"Problematic keys: {[key for key in key_names if key.upper() not in pynputKeys]}")
+    def startKeyListener(self):
+        key_names = self.get_configured_keys()
+        if not self.listenerThread:
+            self.listenerThread = KeyListenerThread(configured_keys=key_names)
+            self.listenerThread.keyEvent.connect(self.handle_key_event)
+            self.listenerThread.start()
+
     def handle_key_event(self, key, is_press):
-        logging.debug(f"Event received: Key={key}, Pressed={is_press}")
-        try:
-            if is_press:
-                self.on_press(key)
-            else:
-                self.on_release(key)
-        except Exception as e:
-            logging.warning(f"Error handling key event: {e}")
-            
+        if is_press:
+            self.on_press(key)
+        else:
+            self.on_release(key)
 
     def on_press(self, key):
-        try:
-            if self.lastKeyDownTime is None:  # Start timing the key press
-                self.lastKeyDownTime = time.time()
-            logging.debug(f"Key pressed: {key}")
-        except Exception as e:
-            logging.warning(f"Error on key press: {e}")
-    
+        self.lastKeyDownTime = time.time()
+
     def on_release(self, key):
-        try:
-            if self.lastKeyDownTime is not None:
-                duration = (time.time() - self.lastKeyDownTime) * 1000  # Duration in milliseconds
-                self.lastKeyDownTime = None
-                maxDitTime = float(self.config.get('maxDitTime', 350))  # Safely access config
-                if duration < maxDitTime:
-                    self.addDit()
-                else:
-                    self.addDah()
-                self.startEndCharacterTimer()
-                logging.debug(f"Key released: {key}, duration: {duration}ms")
-        except Exception as e:
-            logging.warning(f"Error on key release: {e}")
-            
+        duration = (time.time() - self.lastKeyDownTime) * 1000  # Duration in milliseconds
+        maxDitTime = self.config.get('maxDitTime', 350)
+        if duration < maxDitTime:
+            self.addDit()
+        else:
+            self.addDah()
+        self.startEndCharacterTimer()
+
     def addDit(self):
-        self.currentCharacter.append(1)  # Assuming 1 represents Dit
+        self.currentCharacter.append(".")
         if self.config['withsound']:
-            play("res/dit_sound.wav")
+            play(self.config['SoundDit'])
 
     def addDah(self):
-        self.currentCharacter.append(2)  # Assuming 2 represents Dah
+        self.currentCharacter.append("-")
         if self.config['withsound']:
-            play("res/dah_sound.wav")
+            play(self.config['SoundDah'])
 
     def startEndCharacterTimer(self):
         if self.endCharacterTimer is not None:
@@ -273,12 +205,10 @@ class MainWindow(QMainWindow):
         self.endCharacterTimer.start(int(self.config['minLetterPause']))
 
     def endCharacter(self):
-        morse_code = "".join(map(str, self.currentCharacter))
-        # Find the corresponding item based on morse_code
-        #This is now different.. 
-        print(morse_code)
+        morse_code = "".join(self.currentCharacter)
+        print(morse_code)  # Process Morse code here
+        self.currentCharacter = []
 
-            
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
     configmanager = ConfigManager(os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.json"), default_config=DEFAULT_CONFIG)

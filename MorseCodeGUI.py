@@ -1048,7 +1048,7 @@ class Window(QDialog):
             self.keyWinPosXRightRadio.setChecked(True)
         posAxisLayout.addWidget(self.keyWinPosXLeftRadio)
         posAxisLayout.addWidget(self.keyWinPosXRightRadio)
-        self.keyWinPosXEdit = QLineEdit(self.config.get("winposx", "10"))
+        self.keyWinPosXEdit = QLineEdit(str(self.config.get("winposx", "10")))
         inputRadioGroup.setLayout(posAxisLayout)
         inputSettingsLayout.addWidget(inputRadioGroup)
         inputSettingsLayout.addWidget(self.keyWinPosXEdit)
@@ -1063,7 +1063,7 @@ class Window(QDialog):
             self.keyWinPosYBottomRadio.setChecked(True)
         posAxisLayout.addWidget(self.keyWinPosYTopRadio)
         posAxisLayout.addWidget(self.keyWinPosYBottomRadio)
-        self.keyWinPosYEdit = QLineEdit(self.config.get("winposy", "10"))
+        self.keyWinPosYEdit = QLineEdit(str(self.config.get("winposy", "10")))
         inputRadioGroup.setLayout(posAxisLayout)
         inputSettingsLayout.addWidget(inputRadioGroup)
         inputSettingsLayout.addWidget(self.keyWinPosYEdit)
@@ -1487,8 +1487,8 @@ if __name__ == '__main__':
     QApplication.setQuitOnLastWindowClosed(False)
 
     # Initialize managers
-    configmanager = ConfigManager(os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.json"), default_config=DEFAULT_CONFIG)
-    layoutmanager = LayoutManager(os.path.join(os.path.dirname(os.path.realpath(__file__)), "layouts.json"))
+    configmanager = ConfigManager(os.path.join(user_data_dir, "config.json"), default_config=DEFAULT_CONFIG)
+    layoutmanager = LayoutManager(os.path.join(user_data_dir, "layouts.json"))
 
     # Create main window
     window = Window(layoutManager=layoutmanager, configManager=configmanager)
