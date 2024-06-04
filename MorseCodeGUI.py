@@ -148,6 +148,28 @@ class AudioDeviceSelector(QWidget):
         audio_output.start(file)
 
 
+@staticmethod
+def load_abbreviations(file_path):
+    abbreviations = {}
+    try:
+        logging.debug(f"[TypeState] Trying to load abbreviations from file: {file_path}")
+        with open(file_path, 'r') as f:
+            for line in f:
+                if line.strip():
+                    abbr, expansion = line.strip().split('\t')
+                    abbreviations[abbr] = expansion
+    except Exception as e:
+        logging.error(f"Failed to load abbreviations: {e}")
+    return abbreviations
+
+
+@staticmethod
+def expand_abbreviations(text, abbreviations):
+    words = text.split()
+    expanded_words = [abbreviations.get(word, word) for word in words]
+    return ' '.join(expanded_words)
+
+
 class ConfigManager:
     def __init__(self, config_file=None, default_config=DEFAULT_CONFIG):
         self.key_data = {
@@ -367,10 +389,12 @@ class ConfigManager:
 
         
 class TypeState(pressagio.callback.Callback):
-    def __init__ (self):
+    def __init__ (self, abbreviations=None):
         self.text = ""
         self.predictions = None
         self.presage = pressagio.Pressagio(self, pressagioconfig)
+        self.abbreviations = abbreviations
+
     def past_stream (self):
         return self.text
     def future_stream (self):
@@ -386,6 +410,9 @@ class TypeState(pressagio.callback.Callback):
         logging.debug("[TypeState] Fetching predictions for text: {}".format(self.text))
         if self.predictions is None:
             try:
+                expanded_text = expand_abbreviations(self.text, self.abbreviations)
+                logging.debug("[TypeState] Expanded text: {}".format(expanded_text))
+
                 logging.debug("[TypeState] Predictions fetched: {}".format(self.predictions))
                 self.predictions = self.presage.predict()
             except Exception as e:
@@ -742,7 +769,8 @@ class Window(QDialog):
         logging.debug("[Window init] Active layout successfully set to: %s", self.layoutManager.active_layout_name)
         # Check for specific layout types that may require special handling
         if self.layoutManager.main_layout_name == 'typing':
-            self.typestate = TypeState() 
+            self.abbreviations = load_abbreviations(os.path.join(user_data_dir,"abbreviations.txt"))
+            self.typestate = TypeState(self.abbreviations)
         else:
             self.typestate = None
         logging.debug(f"[Window init] layout that is active is: {self.layoutManager.main_layout_name} ")
