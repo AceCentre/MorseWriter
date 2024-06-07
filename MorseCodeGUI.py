@@ -12,8 +12,9 @@ from enum import Enum
 from threading import Thread
 
 # Third-party imports
-from PyQt5.QtMultimedia import QAudioDeviceInfo, QAudioOutput
-from PyQt5.QtCore import QIODevice, QFile, QThread, pyqtSignal, QTimer, Qt
+from PyQt5 import QtCore, QtMultimedia
+from PyQt5.QtMultimedia import QAudioDeviceInfo, QAudioOutput, QAudio, QAudioFormat
+from PyQt5.QtCore import QIODevice, QFile, QThread, pyqtSignal, QTimer, Qt, QThreadPool, QRunnable
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QAction, QCheckBox, QComboBox, QDialog, QGridLayout,
                              QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox,
@@ -84,6 +85,7 @@ def get_user_data_dir(app_name="MorseWriter"):
         # Use a local directory when running in development
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_data')
 
+
 class AudioDeviceSelector(QWidget):
     def __init__(self):
         super().__init__()
@@ -94,58 +96,52 @@ class AudioDeviceSelector(QWidget):
         self.label = QLabel('Select Audio Device:')
         self.layout.addWidget(self.label)
 
-        self.device_combo = QComboBox()
-        self.devices = self.list_audio_devices()
-        for device in self.devices:
-            self.device_combo.addItem(device.deviceName(), device)
-        self.device_combo.currentIndexChanged.connect(self.device_changed)
-        self.layout.addWidget(self.device_combo)
+        self.device_selector = QComboBox()
+        self.list_available_devices()
+        self.device_selector.currentIndexChanged.connect(self.device_changed)
+        self.layout.addWidget(self.device_selector)
 
-        self.file_button = QPushButton('Select Audio File')
-        self.file_button.clicked.connect(self.select_audio_file)
-        self.layout.addWidget(self.file_button)
+        self.test_audio_button = QPushButton('Play Test Sound')
+        self.test_audio_button.clicked.connect(self.test_audio)
+        self.layout.addWidget(self.test_audio_button)
 
         self.setLayout(self.layout)
-        self.audio_file = None
-        self.selected_device = None
 
-    def list_audio_devices(self):
-        """
-        List available audio devices.
-        
-        :return: list of QAudioDeviceInfo
-        """
-        return QAudioDeviceInfo.availableDevices(QAudioOutput.AudioOutput)
+        self.sound_file = None
+        self.player = QtMultimedia.QMediaPlayer()
+        self.selected_device = self.device_selector.currentData()
+
+        icon = QIcon(':/morse-writer.ico')
+        self.setWindowIcon(icon)
 
     def device_changed(self, index):
-        self.selected_device = self.device_combo.itemData(index)
-        print(f"Selected device: {self.selected_device.deviceName()}")
+        self.selected_device = self.device_selector.itemData(index)
+        print(f"Selected device audio device {index} : {self.selected_device.deviceName()}")
+
+    def list_available_devices(self):
+        default_device = QAudioDeviceInfo.defaultOutputDevice()
+        self.device_selector.addItem(default_device.deviceName(), default_device)
+
+        for device in QAudioDeviceInfo.availableDevices(QAudio.AudioOutput):
+            if device != default_device:
+                self.device_selector.addItem(device.deviceName(), device)
+
+    def play_audio(self, file):
+        # check here if file exist
+        if os.path.exists(file):
+            url = QtCore.QUrl.fromLocalFile(QtCore.QDir.current().absoluteFilePath(file))
+            self.player.setMedia(QtMultimedia.QMediaContent(url))
+            self.player.play()
+
+    def test_audio(self):
+        self.play_audio("res/dah_sound.wav")
 
     def select_audio_file(self):
         file_dialog = QFileDialog()
         self.audio_file, _ = file_dialog.getOpenFileName(self, "Select Audio File", "", "Audio Files (*.wav)")
         if self.audio_file:
-            print(f"Selected audio file: {self.audio_file}")
-            self.play_audio_device(self.audio_file, self.selected_device)
-
-    def play_audio_device(self, wav_file, device):
-        """
-        Play a WAV file on the selected audio device.
-
-        :param wav_file: Path to the WAV file
-        :type wav_file: str
-        :param device: QAudioDeviceInfo for the audio device
-        :type device: QAudioDeviceInfo
-        :return: None
-        """
-        file = QFile(wav_file)
-        if not file.open(QIODevice.ReadOnly):
-            print(f"Failed to open audio file: {wav_file}")
-            return
-
-        audio_format = device.preferredFormat()
-        audio_output = QAudioOutput(device, audio_format)
-        audio_output.start(file)
+            print(f"Selected audio file: {self.audio_file} to play on device {self.selected_device.deviceName()}")
+            self.play_audio(self.audio_file)
 
 
 @staticmethod
@@ -757,6 +753,8 @@ class Window(QDialog):
         self.codeslayoutview = None
         self.fast_morse_mode_timer = None
 
+        self.audioSelector = AudioDeviceSelector()
+
     def load_default_config(self):
         return DEFAULT_CONFIG.copy()
 
@@ -792,6 +790,7 @@ class Window(QDialog):
         self.trayIcon.activated.connect(self.iconActivated)
         self.GOButton.clicked.connect(self.goForIt)
         self.SaveButton.clicked.connect(self.saveSettings)
+        self.DeviceButton.clicked.connect(self.changeAudioDevice)
         self.withSound.clicked.connect(self.updateAudioProperties)
         mainLayout = QVBoxLayout()
         mainLayout.addWidget(self.iconGroupBox)
@@ -837,7 +836,7 @@ class Window(QDialog):
         else:
             self.iconComboBoxSoundDit.setEnabled(False)
             self.iconComboBoxSoundDah.setEnabled(False)
-        
+
     def changeLayout(self, layout_name):
         logging.debug(f"[Window changeLayout] Attempting to change layout to: {layout_name}")
         if layout_name in self.layoutManager.layouts:
@@ -887,7 +886,7 @@ class Window(QDialog):
             'winyaxis': "top" if self.keyWinPosYTopRadio.isChecked() else "bottom",
             'winposx': self.keyWinPosXEdit.text(),
             'winposy': self.keyWinPosYEdit.text(),
-            'fastMorseMode': self.fastMorseModeCheckbox.isChecked() if self.keySelectionRadioOneKey.isChecked() is False else False  # Update Fast Morse Mode
+            'fastMorseMode': self.fastMorseModeCheckbox.isChecked() if self.keySelectionRadioOneKey.isChecked() is False else False,
         }
         return config
 
@@ -1062,6 +1061,7 @@ class Window(QDialog):
         self.fastMorseModeCheckbox = QCheckBox("Fast Morse Mode")
         self.fastMorseModeCheckbox.setChecked(self.config.get("fastMorseMode", False))
         inputSettingsLayout.addWidget(self.fastMorseModeCheckbox)
+
         self.updateFastMorseModeAvailability()  # Initialize the state based on the current key mode
 
         inputSettingsLayout.addLayout(SoundConfigLayout)
@@ -1095,10 +1095,12 @@ class Window(QDialog):
         inputRadioGroup.setLayout(posAxisLayout)
         inputSettingsLayout.addWidget(inputRadioGroup)
         inputSettingsLayout.addWidget(self.keyWinPosYEdit)
-        
+
+        self.DeviceButton = QPushButton("Audio Device")
         self.SaveButton = QPushButton("Save Settings")
         self.GOButton = QPushButton("GO!")
         buttonsSec = QHBoxLayout()
+        buttonsSec.addWidget(self.DeviceButton)
         buttonsSec.addWidget(self.SaveButton)
         buttonsSec.addWidget(self.GOButton)
         inputSettingsLayout.addLayout(buttonsSec)
@@ -1118,7 +1120,10 @@ class Window(QDialog):
     def saveSettings (self):
         self.collect_config()
         self.configManager.save_config()
-        
+
+    def changeAudioDevice(self):
+        self.audioSelector.show()
+
     def toggleOnOff(self):
         if self.config['off']:
             self.config['off'] = False
@@ -1235,13 +1240,15 @@ class Window(QDialog):
     def addDit(self):
         self.currentCharacter.append(1)
         if self.config['withsound']:
-            play("res/dit_sound.wav")   
+            # play("res/dit_sound.wav") #nava
+            self.audioSelector.play_audio("res/dit_sound.wav")
         self.codeslayoutview.Dit()
     
     def addDah(self):
         self.currentCharacter.append(2)
         if self.config['withsound']:
-            play("res/dah_sound.wav")
+            # play("res/dah_sound.wav") #nava
+            self.audioSelector.play_audio("res/dah_sound.wav")
         self.codeslayoutview.Dah()
 
 
@@ -1272,7 +1279,8 @@ class Window(QDialog):
                 action.perform()                
                 logging.info(f"[endCharacter] Action performed for Morse code: {morse_code}")
                 if self.config['withsound']:
-                    play(self.config.get('SoundTyping', 'res/typing_sound.wav'))  # Play typing sound
+                    #play(self.config.get('SoundTyping', 'res/typing_sound.wav'))  # Play typing sound
+                    self.audioSelector.play_audio(self.config.get('SoundTyping', 'res/typing_sound.wav'))
             else:
                 logging.warning(f"[endCharacter] No action found for Morse code: {morse_code}")
         except Exception as e:
