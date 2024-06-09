@@ -26,14 +26,14 @@ import mouse
 # Local application/library specific imports
 import pressagio.callback
 import pressagio
-import icons_rc  
+import icons_rc
 
 # Configure basic logger
 #logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',format='%(name)s - %(levelname)s - %(message)s')
 
 # If you want to the console
 logging.basicConfig(level=logging.DEBUG,format='%(name)s - %(levelname)s - %(message)s')
-                    
+
 lastkeydowntime = -1
 
 pressagioconfig_file= os.path.join(os.path.dirname(os.path.realpath(__file__)), "res","morsewriter_pressagio.ini")
@@ -68,6 +68,7 @@ DEFAULT_CONFIG = {
   "winposx": 10,
   "winposy": 10
 }
+
 
 def get_user_data_dir(app_name="MorseWriter"):
     """
@@ -160,10 +161,16 @@ def load_abbreviations(file_path):
 
 
 @staticmethod
-def expand_abbreviations(text, abbreviations):
-    words = text.split()
-    expanded_words = [abbreviations.get(word, word) for word in words]
-    return ' '.join(expanded_words)
+def expand_abbreviations(keys, abbreviations):
+    words = keys.split()
+
+    expanded_words = []
+    for word in words:
+        expanded = abbreviations.get(word)
+        if expanded is not None:
+            expanded_words.append(expanded)
+
+    return expanded_words
 
 
 class ConfigManager:
@@ -229,7 +236,7 @@ class ConfigManager:
         "LESSTHAN": {'label': '<', 'key_code': ',', 'character': '<', 'arg': None},
         "MORETHAN": {'label': '>', 'key_code': '.', 'character': '>', 'arg': None},
         "CIRCONFLEX": {'label': '^', 'key_code': '6', 'character': '^', 'arg': None},
-        "ENTER": {'label': 'ENTER', 'key_code': 'r', 'character': '\n', 'arg': None},
+        "ENTER": {'label': 'enter', 'key_code': 'enter', 'character': '\n', 'arg': None},
         "SPACE": {'label': 'space', 'key_code': 'space', 'character': ' ', 'arg': None},
         "BACKSPACE": {'label': 'bckspc', 'key_code': 'backspace', 'character': '\x08', 'arg': None},
         "TAB": {'label': 'tab', 'key_code': 'tab', 'character': '\t', 'arg': None},
@@ -270,38 +277,38 @@ class ConfigManager:
         "REPEATMODE": {'label': 'repeat', 'key_code': 'unknown', 'character': None, 'arg': 0},
         "SOUND": {'label': 'snd', 'key_code': 'unknown', 'character': None, 'arg': 8},
         "CODESET": {'label': 'code', 'key_code': 'unknown', 'character': None, 'arg': 9},
-        "MOUSERIGHT5": {'label': 'ms right 5', 'key_code': 'MOUSERIGHT5', 'character': None, 'arg': 2},
-        "MOUSEUP5": {'label': 'ms up 5', 'key_code': 'MOUSEUP5', 'character': None, 'arg': 3},
-        "MOUSECLICKLEFT": {'label': 'ms clkleft', 'key_code': 'MOUSECLICKLEFT', 'character': None, 'arg': 4},
-        "MOUSEDBLCLICKLEFT": {'label': 'ms dblclkleft', 'key_code': 'MOUSEDBLCLICKLEFT', 'character': None, 'arg': 5},
-        "MOUSECLKHLDLEFT": {'label': 'ms hldleft', 'key_code': 'MOUSECLKHLDLEFT', 'character': None, 'arg': 6},
-        "MOUSEUPLEFT5": {'label': 'ms leftup 5', 'key_code': 'MOUSEUPLEFT5', 'character': None, 'arg': 7},
-        "MOUSEDOWNLEFT5": {'label': 'ms leftdown 5', 'key_code': 'MOUSEDOWNLEFT5', 'character': None, 'arg': 8},
-        "MOUSERELEASEHOLD": {'label': 'ms release', 'key_code': 'MOUSERELEASEHOLD', 'character': None, 'arg': 9},
-        "MOUSELEFT5": {'label': 'ms left 5', 'key_code': 'MOUSELEFT5', 'character': None, 'arg': 0},
-        "MOUSEDOWN5": {'label': 'ms down 5', 'key_code': 'MOUSEDOWN5', 'character': None, 'arg': 1},
-        "MOUSECLICKRIGHT": {'label': 'ms clkright', 'key_code': 'MOUSECLICKRIGHT', 'character': None, 'arg': 2},
-        "MOUSEDBLCLICKRIGHT": {'label': 'ms dblclkright', 'key_code': 'MOUSEDBLCLICKRIGHT', 'character': None, 'arg': 3},
-        "MOUSECLKHLDRIGHT": {'label': 'ms hldright', 'key_code': 'MOUSECLKHLDRIGHT', 'character': None, 'arg': 4},
-        "MOUSEUPRIGHT5": {'label': 'ms rightup 5', 'key_code': 'MOUSEUPRIGHT5', 'character': None, 'arg': 5},
-        "MOUSEDOWNRIGHT5": {'label': 'ms rightdown 5', 'key_code': 'MOUSEDOWNRIGHT5', 'character': None, 'arg': 6},
-        "MOUSENORMALMODE": {'label': 'normal mode', 'key_code': 'NORMALMODE', 'character': None, 'arg': 7},
-        "MOUSEUP40": {'label': 'ms up 40', 'key_code': 'MOUSEUP40', 'character': None, 'arg': 8},
-        "MOUSEUP250": {'label': 'ms up 250', 'key_code': 'MOUSEUP250', 'character': None, 'arg': 9},
-        "MOUSEDOWN40": {'label': 'ms down 40', 'key_code': 'MOUSEDOWN40', 'character': None, 'arg': 0},
-        "MOUSEDOWN250": {'label': 'ms down 250', 'key_code': 'MOUSEDOWN250', 'character': None, 'arg': 1},
-        "MOUSELEFT40": {'label': 'ms left 40', 'key_code': 'MOUSELEFT40', 'character': None, 'arg': 2},
-        "MOUSELEFT250": {'label': 'ms left 250', 'key_code': 'MOUSELEFT250', 'character': None, 'arg': 3},
-        "MOUSERIGHT40": {'label': 'ms right 40', 'key_code': 'MOUSERIGHT40', 'character': None, 'arg': 4},
-        "MOUSERIGHT250": {'label': 'ms right 250', 'key_code': 'MOUSERIGHT250', 'character': None, 'arg': 5},
-        "MOUSEUPLEFT40": {'label': 'ms leftup 40', 'key_code': 'MOUSEUPLEFT40', 'character': None, 'arg': 6},
-        "MOUSEUPLEFT250": {'label': 'ms leftup 250', 'key_code': 'MOUSEUPLEFT250', 'character': None, 'arg': 7},
-        "MOUSEDOWNLEFT40": {'label': 'ms leftdown 40', 'key_code': 'MOUSEDOWNLEFT40', 'character': None, 'arg': 8},
-        "MOUSEDOWNLEFT250": {'label': 'ms leftdown 250', 'key_code': 'MOUSEDOWNLEFT250', 'character': None, 'arg': 9},
-        "MOUSEUPRIGHT40": {'label': 'ms rightup 40', 'key_code': 'MOUSEUPRIGHT40', 'character': None, 'arg': 0},
-        "MOUSEUPRIGHT250": {'label': 'ms rightup 250', 'key_code': 'MOUSEUPRIGHT250', 'character': None, 'arg': 1},
-        "MOUSEDOWNRIGHT40": {'label': 'ms rightdown 40', 'key_code': 'MOUSEDOWNRIGHT40', 'character': None, 'arg': 2},
-        "MOUSEDOWNRIGHT250": {'label': 'ms rightdown 250', 'key_code': 'MOUSEDOWNRIGHT250', 'character': None, 'arg': 3}
+        "MOUSERIGHT5": {'label': 'ms right 5', 'key_code': 'unknown', 'character': None, 'arg': 2},
+        "MOUSEUP5": {'label': 'ms up 5', 'key_code': 'unknown', 'character': None, 'arg': 3},
+        "MOUSECLICKLEFT": {'label': 'ms clkleft', 'key_code': 'unknown', 'character': None, 'arg': 4},
+        "MOUSEDBLCLICKLEFT": {'label': 'ms dblclkleft', 'key_code': 'unknown', 'character': None, 'arg': 5},
+        "MOUSECLKHLDLEFT": {'label': 'ms hldleft', 'key_code': 'unknown', 'character': None, 'arg': 6},
+        "MOUSEUPLEFT5": {'label': 'ms leftup 5', 'key_code': 'unknown', 'character': None, 'arg': 7},
+        "MOUSEDOWNLEFT5": {'label': 'ms leftdown 5', 'key_code': 'unknown', 'character': None, 'arg': 8},
+        "MOUSERELEASEHOLD": {'label': 'ms release', 'key_code': 'unknown', 'character': None, 'arg': 9},
+        "MOUSELEFT5": {'label': 'ms left 5', 'key_code': 'unknown', 'character': None, 'arg': 0},
+        "MOUSEDOWN5": {'label': 'ms down 5', 'key_code': 'unknown', 'character': None, 'arg': 1},
+        "MOUSECLICKRIGHT": {'label': 'ms clkright', 'key_code': 'unknown', 'character': None, 'arg': 2},
+        "MOUSEDBLCLICKRIGHT": {'label': 'ms dblclkright', 'key_code': 'unknown', 'character': None, 'arg': 3},
+        "MOUSECLKHLDRIGHT": {'label': 'ms hldright', 'key_code': 'unknown', 'character': None, 'arg': 4},
+        "MOUSEUPRIGHT5": {'label': 'ms rightup 5', 'key_code': 'unknown', 'character': None, 'arg': 5},
+        "MOUSEDOWNRIGHT5": {'label': 'ms rightdown 5', 'key_code': 'unknown', 'character': None, 'arg': 6},
+        "NORMALMODE": {'label': 'normal mode', 'key_code': 'unknown', 'character': None, 'arg': 7},
+        "MOUSEUP40": {'label': 'ms up 40', 'key_code': 'unknown', 'character': None, 'arg': 8},
+        "MOUSEUP250": {'label': 'ms up 250', 'key_code': 'unknown', 'character': None, 'arg': 9},
+        "MOUSEDOWN40": {'label': 'ms down 40', 'key_code': 'unknown', 'character': None, 'arg': 0},
+        "MOUSEDOWN250": {'label': 'ms down 250', 'key_code': 'unknown', 'character': None, 'arg': 1},
+        "MOUSELEFT40": {'label': 'ms left 40', 'key_code': 'unknown', 'character': None, 'arg': 2},
+        "MOUSELEFT250": {'label': 'ms left 250', 'key_code': 'unknown', 'character': None, 'arg': 3},
+        "MOUSERIGHT40": {'label': 'ms right 40', 'key_code': 'unknown', 'character': None, 'arg': 4},
+        "MOUSERIGHT250": {'label': 'ms right 250', 'key_code': 'unknown', 'character': None, 'arg': 5},
+        "MOUSEUPLEFT40": {'label': 'ms leftup 40', 'key_code': 'unknown', 'character': None, 'arg': 6},
+        "MOUSEUPLEFT250": {'label': 'ms leftup 250', 'key_code': 'unknown', 'character': None, 'arg': 7},
+        "MOUSEDOWNLEFT40": {'label': 'ms leftdown 40', 'key_code': 'unknown', 'character': None, 'arg': 8},
+        "MOUSEDOWNLEFT250": {'label': 'ms leftdown 250', 'key_code': 'unknown', 'character': None, 'arg': 9},
+        "MOUSEUPRIGHT40": {'label': 'ms rightup 40', 'key_code': 'unknown', 'character': None, 'arg': 0},
+        "MOUSEUPRIGHT250": {'label': 'ms rightup 250', 'key_code': 'unknown', 'character': None, 'arg': 1},
+        "MOUSEDOWNRIGHT40": {'label': 'ms rightdown 40', 'key_code': 'unknown', 'character': None, 'arg': 2},
+        "MOUSEDOWNRIGHT250": {'label': 'ms rightdown 250', 'key_code': 'unknown', 'character': None, 'arg': 3}
         }
         self.config_file = config_file or os.path.join(user_data_dir, 'config.json')
         self.default_config = default_config
@@ -318,7 +325,7 @@ class ConfigManager:
             keystrokemap[key.upper()] = stroke
         return keystrokemap, keystrokes
 
-    
+
     def read_config(self):
         if self.config_file and os.path.exists(self.config_file):
             try:
@@ -332,7 +339,7 @@ class ConfigManager:
         config = self.default_config.copy()
         config['fastMorseMode'] = config.get('fastMorseMode', False)  # Default to False if not set
         return config
-        
+
 
     def update_keystrokes(self, data):
         for key in ['keyone', 'keytwo', 'keythree']:
@@ -356,10 +363,10 @@ class ConfigManager:
 
     def get_config(self):
         return self.config
-        
+
     def initActions(self, window):
         actions = {}
-        
+
         # Set up actions for each key based on `key_data`
         for key, value in self.key_data.items():
             label = value['label']
@@ -367,28 +374,23 @@ class ConfigManager:
             character = value['character']
             arg = value['arg']
             toggle_action = value.get('toggle_action', False)
-            
-            if key.startswith('MOUSE'):
-                # Mouse actions will use ActionLegacy
-                actions[key.upper()] = lambda item, lbl=label, kc=key_code, char=character, a=arg, win=window: ActionLegacy(
-                item, a, lbl, kc)
-            else:
-                # Correctly capture the loop variables using default values in lambda
-                actions[key.upper()] = lambda item, win=window, lbl=label, kc=key_code, char=character, a=arg, tog=toggle_action: ActionKeyStroke(
-                    {'label': lbl, 'key_code': kc, 'character': char, 'arg': a}, kc, tog, win)
-        
+
+            # Correctly capture the loop variables using default values in lambda
+            actions[key.upper()] = lambda item, win=window, lbl=label, kc=key_code, char=character, a=arg, tog=toggle_action: ActionKeyStroke(
+                {'label': lbl, 'key_code': kc, 'character': char, 'arg': a}, kc, tog, win)
+
         # Define special actions with correct lambda capturing
         actions["CHANGELAYOUT"] = lambda item, win=window: ChangeLayoutAction(item, win.changeLayout)
         actions["PREDICTION_SELECT"] = lambda item, win=window: PredictionSelectLayoutAction(
             item, get_predictions_func=win.getTypeStatePredictions)
-    
+
         # Assuming the action name is stored in item['action'] and matches keys in key_data
         actions["KEYSTROKE"] = lambda item, kd=self.key_data, win=window: ActionKeyStroke(
             item, kd[item['action'].upper()]['key_code'], win=win)
-    
+
         return actions
 
-        
+
 class TypeState(pressagio.callback.Callback):
     def __init__ (self, abbreviations=None):
         self.text = ""
@@ -408,23 +410,26 @@ class TypeState(pressagio.callback.Callback):
         self.text = self.text[:-1]
         self.predictions = None
     def getpredictions(self):
-        logging.debug("[TypeState] Fetching predictions for text: {}".format(self.text))
+        logging.debug("[TypeState] Fetching predictions and abbreviations for text: {}".format(self.text))
         if self.predictions is None:
             try:
-                expanded_text = expand_abbreviations(self.text, self.abbreviations)
-                logging.debug("[TypeState] Expanded text: {}".format(expanded_text))
-
-                logging.debug("[TypeState] Predictions fetched: {}".format(self.predictions))
                 self.predictions = self.presage.predict()
+                logging.debug("[TypeState] Predictions fetched: {}".format(self.predictions))
+
+                self.expanded_text = expand_abbreviations(self.text, self.abbreviations)
+                logging.debug("[TypeState] Abbreviations fetched: {}".format(self.expanded_text))
+
+                for itm in self.predictions:
+                    self.expanded_text.append(itm)
+
             except Exception as e:
                 logging.error(f"[TypeState] Failed to generate predictions: {str(e)}")
                 self.predictions = []
-        return self.predictions
 
-
+        return self.expanded_text
 
 class KeyListenerThread(QThread):
-    keyEvent = pyqtSignal(str, bool)  # Emit key name and press/release status
+    keyEvent = pyqtSignal(str, bool, int)  # Emit key name and press/release status
 
     def __init__(self, configured_keys):
         super().__init__()
@@ -432,32 +437,31 @@ class KeyListenerThread(QThread):
         self.keep_running = True  # Control running of the loop
 
     def run(self):
-        # Check if the operating system is MacOS
-        if platform.system() == 'Darwin':
-            # If it is, only allow modifier keys
-            allowed_keys = ['shift', 'ctrl', 'alt', 'cmd']
-            self.configured_keys = [key for key in self.configured_keys if key in allowed_keys]
-
         # Setup key hooks once, outside the loop
         for key in self.configured_keys:
             keyboard.on_press_key(key, self.on_press, suppress=True)
             keyboard.on_release_key(key, self.on_release, suppress=True)
-        
+
         # Minimal loop to keep the thread alive
         while self.keep_running:
             time.sleep(0.1)  # Small sleep to avoid CPU overload
 
     def on_press(self, event):
-        self.keyEvent.emit(event.name, True)
+        # check the index of the event.name and send it with the key event
+        role = self.configured_keys.index(event.name)
+        self.keyEvent.emit(event.name, True, role)
 
     def on_release(self, event):
-        self.keyEvent.emit(event.name, False)
+        role = self.configured_keys.index(event.name)
+        self.keyEvent.emit(event.name, False, role)
 
     def stop(self):
         self.keep_running = False  # Signal the loop to stop
         keyboard.unhook_all()  # Unhook all keys
         self.quit()  # Quit the thread's event loop if necessary
         self.wait()  # Wait for the thread to finish
+
+
 class PressagioCallback(pressagio.callback.Callback):
     def __init__(self, buffer):
         super().__init__()
@@ -468,7 +472,7 @@ class PressagioCallback(pressagio.callback.Callback):
 
     def future_stream(self):
         return ""
-            
+
 class LayoutManager:
     def __init__(self, layout_file):
         self.layout_file = layout_file
@@ -525,7 +529,7 @@ def moveMouse(x_delta, y_delta):
     mouse.move(new_pos)
 
 def clickMouse(button='left', action='click'):
-    btn = Button.left if button == 'left' else Button.right
+    btn = mouse.LEFT if button == 'left' else mouse.RIGHT
     if action == 'click':
         mouse.click(btn)
     elif action == 'press':
@@ -537,7 +541,7 @@ def clickMouse(button='left', action='click'):
 def getPossibleCombos(currentCharacter):
     x = ""
     for i in currentCharacter:
-        x += str(i)   
+        x += str(i)
     possibleactions = []
     for action in normalmapping:
         if (len(action) >= len(x) and action[:len(x)] == x):
@@ -562,13 +566,14 @@ class ActionLegacy (Action):
         # Additional initialization for ActionLegacy
         self.arg = arg
         self.label = label
-        self.key = key 
-            
+        self.key = key
+
     def getlabel (self):
         return self.label
-        
+
 
     def perform(self):
+        logging.debug(f"[ActionLegacy] Key to press/release: {self.key}, type: {type(self.key)}")
         action_map = {
             'MOUSEUP5': lambda: moveMouse(0, -5),
             'MOUSEDOWN5': lambda: moveMouse(0, 5),
@@ -594,20 +599,20 @@ class ActionLegacy (Action):
             'MOUSEUPRIGHT250': lambda: moveMouse(250, -250),
             'MOUSEDOWNLEFT250': lambda: moveMouse(-250, 250),
             'MOUSEDOWNRIGHT250': lambda: moveMouse(250, 250),
-            'MOUSECLICKLEFT': lambda: clickMouse(Button.left, 'click'),
-            'MOUSECLICKRIGHT': lambda: clickMouse(Button.right, 'click'),
-            'MOUSECLKHLDLEFT': lambda: clickMouse(Button.left, 'press'),
-            'MOUSECLKHLDRIGHT': lambda: clickMouse(Button.right, 'press'),
-            'MOUSERELEASEHOLD': lambda: clickMouse(Button.left, 'release'), # Assumes left button for example
+            'MOUSECLICKLEFT': lambda: clickMouse(mouse.LEFT, 'click'),
+            'MOUSECLICKRIGHT': lambda: clickMouse(mouse.RIGHT, 'click'),
+            'MOUSECLKHLDLEFT': lambda: clickMouse(mouse.LEFT, 'press'),
+            'MOUSECLKHLDRIGHT': lambda: clickMouse(mouse.RIGHT, 'press'),
+            'MOUSERELEASEHOLD': lambda: clickMouse(mouse.LEFT, 'release'), # Assumes left button for example
             'REPEATMODE': self.handleRepeatMode
         }
-    
+
         # Execute the mapped function based on self.key if exists
         if self.key and self.key in action_map:
             action_map[self.key]()
         else:
             logging.debug(f"[ActionLegacy-perform] No action defined for key: {self.key}")
-    
+
     def handleRepeatMode(self):
         if self.repeaton:
             if self.config.get('debug', False):
@@ -617,23 +622,23 @@ class ActionLegacy (Action):
             if self.config.get('debug', False):
                 logging.info("repeat ON")
             self.repeaton = True
-    
+
 
 class KeyStroke:
     def __init__(self, name, label, key_code, character):
         self.name = name
         self.label = label
-        self.key_code = key_code 
+        self.key_code = key_code
         self.character = character
 
-        
+
 class ActionKeyStroke(Action):
     def __init__(self, item, key, toggle_action=False, window=None):
         super(ActionKeyStroke, self).__init__(item)
-        self.key = key 
+        self.key = key
         self.label = item.get('label', item.get('action'))
         self.toggle_action = toggle_action
-        self.window = window 
+        self.window = window
 
     @property
     def name(self):
@@ -749,7 +754,7 @@ class Window(QDialog):
         self.layoutManager = layoutManager
         self.configManager = configManager
         self.config = self.configManager.get_config()
-        self.typestate = None 
+        self.typestate = None
         self.actions = {}
         self.keystrokes = []
         self.keystrokemap = {}
@@ -770,14 +775,14 @@ class Window(QDialog):
 
     def init(self):
         self.currentCharacter = []
-        self.repeaton = False 
+        self.repeaton = False
         self.repeatkey = None
         logging.debug("[Window init] Setting active layout to: %s", self.layoutManager.main_layout_name)
         self.layoutManager.set_active(self.layoutManager.main_layout_name)
         logging.debug("[Window init] Active layout successfully set to: %s", self.layoutManager.active_layout_name)
         # Check for specific layout types that may require special handling
         if self.layoutManager.main_layout_name == 'typing':
-            self.abbreviations = load_abbreviations(os.path.join(user_data_dir,"abbreviations.txt"))
+            self.abbreviations = load_abbreviations(os.path.join(user_data_dir,"abbreviations_en.txt"))
             self.typestate = TypeState(self.abbreviations)
         else:
             self.typestate = None
@@ -810,11 +815,11 @@ class Window(QDialog):
         self.setWindowTitle("MorseWriter V2.1")
         self.resize(400, 300)
 
-       
+
     def get_configured_keys(self):
         key_codes = []
         default_keys = {'keyone': 'SPACE', 'keytwo': 'ENTER', 'keythree': 'RIGHT CTRL'}
-    
+
         for key in ['keyone', 'keytwo', 'keythree']:
             config_key = self.config.get(key, default_keys[key])
             try:
@@ -827,19 +832,16 @@ class Window(QDialog):
             except AttributeError:
                 logging.error(f"'KeyStroke' object for '{config_key}' is missing 'key_code' attribute.")
                 raise
-    
         return key_codes
 
-    
-    
+
     def startKeyListener(self):
-        key_codes = self.get_configured_keys() 
-        logging.debug(f"[Window startKeyListener] Configured keys: {key_codes}")
+        key_codes = self.get_configured_keys()
         if not self.listenerThread:
             self.listenerThread = KeyListenerThread(configured_keys=key_codes)
             self.listenerThread.keyEvent.connect(self.handle_key_event)
             self.listenerThread.start()
-    
+
     def updateAudioProperties(self):
         if self.withSound.isChecked():
             self.iconComboBoxSoundDit.setEnabled(True)
@@ -871,6 +873,7 @@ class Window(QDialog):
 
 
     def getTypeStatePredictions(self):
+        logging.debug(f"[Window] getTypeStatePredictions")
         if self.typestate:
             return self.typestate.getpredictions()
         return []
@@ -902,6 +905,17 @@ class Window(QDialog):
         return config
 
     def goForIt(self):
+        key_one = self.iconComboBoxKeyOne.currentData()
+        key_two = self.iconComboBoxKeyTwo.currentData()
+        key_three = self.iconComboBoxKeyThree.currentData()
+        warn_user = (self.keySelectionRadioTwoKey.isChecked() and key_one == key_two) or (self.keySelectionRadioThreeKey.isChecked() and (key_one == key_two or key_one == key_three or key_two == key_three))
+
+        if warn_user:
+            QMessageBox.warning(self, "MorseWriter",
+                                    "Input keys can not be similar, please make sure using different keys.")
+            return
+
+        self.iconComboBoxKeyOne.currentData()
         if self.trayIcon.isVisible():
             QMessageBox.information(self, "MorseWriter",
                                     "The program will run in the system tray. To terminate the program, choose <b>Quit</b> in the context menu of the system tray entry.")
@@ -909,17 +923,17 @@ class Window(QDialog):
         self.config = self.collect_config()
         self.init()
         if not self.listenerThread:
-            self.startKeyListener() 
-        
+            self.startKeyListener()
+
     def start (self):
-        self.init()  
+        self.init()
         self.startKeyListener()
 
     def closeEvent(self, event):
         self.stopIt()
-        event.accept() 
+        event.accept()
         QApplication.instance().quit()
-        
+
     def setIcon(self):
         icon = QIcon(':/morse-writer.ico')
         self.trayIcon.setIcon(icon)
@@ -934,7 +948,7 @@ class Window(QDialog):
     def showMessage(self):
         icon = QSystemTrayIcon.MessageIcon(self.typeComboBox.itemData(self.typeComboBox.currentIndex()))
         self.trayIcon.showMessage(self.titleEdit.text(), self.bodyEdit.toPlainText(), icon, self.durationSpinBox.value() * 1000)
-        
+
     def mkKeyStrokeComboBox (self, items, currentkey, valuedict=None):
         box = QComboBox()
         for key, val in items:
@@ -948,13 +962,13 @@ class Window(QDialog):
 
     def createIconGroupBox(self):
         self.iconGroupBox = QGroupBox("Input Settings")
-        
+
         self.keySelectionRadioOneKey = QRadioButton("One Key")
         self.keySelectionRadioTwoKey = QRadioButton("Two Key")
         self.keySelectionRadioThreeKey = QRadioButton("Three Key")
-        
+
         inputSettingsLayout = QVBoxLayout()
-        
+
         inputRadioGroup = QGroupBox("Number of keys")
         inputRadioButtonsLayout = QHBoxLayout()
         inputRadioButtonsLayout.addWidget(self.keySelectionRadioOneKey)
@@ -962,19 +976,19 @@ class Window(QDialog):
         inputRadioButtonsLayout.addWidget(self.keySelectionRadioThreeKey)
         inputRadioGroup.setLayout(inputRadioButtonsLayout)
         inputSettingsLayout.addWidget(inputRadioGroup)
-        
+
         inputKeyComboBoxesLayout = QHBoxLayout()
 
         # Filter the keystrokes to only include those keys that are specified in morse_keys
-        morse_keys = ["SPACE", "ENTER", "ONE", "TWO", "Z", "F8", "F9", "RCTRL", "LCTRL", "RSHIFT", "LSHIFT", "ALT", "CTRL"]
-        filtered_keystrokes = [(key, self.keystrokemap[key].label) for key in morse_keys if key in self.keystrokemap]
-        
+        morse_keys = ["SPACE", "ENTER", "ONE", "TWO", "Z", "F8", "F9", "RCTRL", "LCTRL", "RSHIFT", "LSHIFT", "ALT"]
+        filtered_keystrokes = [(key, self.keystrokemap[key].name) for key in morse_keys if key in self.keystrokemap]
+
         # Set up the combo box for the first key using the filtered list
         self.iconComboBoxKeyOne = self.mkKeyStrokeComboBox(
             filtered_keystrokes,
             self.config.get('keyone')
         )
-        
+
         # Repeat similar setup for other key selectors if necessary
         self.iconComboBoxKeyTwo = self.mkKeyStrokeComboBox(
             filtered_keystrokes,
@@ -985,7 +999,7 @@ class Window(QDialog):
             filtered_keystrokes,
             self.config.get('keythree')
         )
-        
+
         inputKeyComboBoxesLayout.addWidget(self.iconComboBoxKeyOne)
         inputKeyComboBoxesLayout.addWidget(self.iconComboBoxKeyTwo)
         inputKeyComboBoxesLayout.addWidget(self.iconComboBoxKeyThree)
@@ -998,14 +1012,14 @@ class Window(QDialog):
         self.keySelectionRadioTwoKey.toggled.connect(self.iconComboBoxKeyThree.hide)
         self.keySelectionRadioThreeKey.toggled.connect(self.iconComboBoxKeyThree.show)
         self.keySelectionRadioThreeKey.toggled.connect(self.iconComboBoxKeyTwo.show)
-        
+
         self.keySelectionRadioOneKey.clicked.connect(self.updateFastMorseModeAvailability)
         self.keySelectionRadioTwoKey.clicked.connect(self.updateFastMorseModeAvailability)
         self.keySelectionRadioThreeKey.clicked.connect(self.updateFastMorseModeAvailability)
 
-        for index, name in [[1,'One'], [2,'Two'], [3,'Three']]: 
+        for index, name in [[1,'One'], [2,'Two'], [3,'Three']]:
             getattr(self, 'keySelectionRadio%sKey'%(name)).setChecked(self.config.get('keylen', 1) == index)
-        
+
         maxDitTimeLabel = QLabel("MaxDitTime (ms):")
         self.maxDitTimeEdit = QLineEdit(str(self.config.get("maxDitTime", "350")))
         minLetterPauseLabel = QLabel("minLetterPause (ms):")
@@ -1017,15 +1031,15 @@ class Window(QDialog):
         TimingsLayout.addWidget(self.minLetterPauseEdit, 1, 1, 2, 4)
         TimingsLayout.setRowStretch(4, 1)
         inputSettingsLayout.addLayout(TimingsLayout)
-        
+
         self.withDebug = QCheckBox("Debug On")
         self.withDebug.setChecked(self.config.get("debug", False))
         inputSettingsLayout.addWidget(self.withDebug)
-        
+
         self.withSound = QCheckBox("Audible beeps")
         self.withSound.setChecked(self.config.get("withsound", True))
         inputSettingsLayout.addWidget(self.withSound)
-        
+
         fontSizeScaleLabel = QLabel("FontSize (%):")
         self.fontSizeScaleEdit = QLineEdit(str(self.config.get("fontsizescale", "100")))
         viewSettingSec = QGridLayout()
@@ -1041,7 +1055,7 @@ class Window(QDialog):
                 ["Dit Sound", "res/dit_sound.wav"],  # Ensure the path is correct
                 ["Default", "res/dit_sound.wav"]  # Optional: default sound path
             ], self.config.get('SoundDit', "res/dit_sound.wav"))
-        
+
         self.iconComboBoxSoundDah = self.mkKeyStrokeComboBox([
             ["Dah Sound", "res/dah_sound.wav"],  # Ensure the path is correct
             ["Default", "res/dah_sound.wav"]  # Optional: default sound path
@@ -1063,11 +1077,11 @@ class Window(QDialog):
         SoundConfigLayout.addWidget(self.iconComboBoxSoundDah, 1, 1, 1, 4)
         SoundConfigLayout.addWidget(TypingSoundLabel, 2, 0)
         SoundConfigLayout.addWidget(self.iconComboBoxSoundTyping, 2, 1, 1, 4)
-        
+
         self.autostartCheckbox = QCheckBox("Auto-Start")
         self.autostartCheckbox.setChecked(self.config.get("autostart", True))
         inputSettingsLayout.addWidget(self.autostartCheckbox)
-        
+
         # Add Fast Morse Mode checkbox
         self.fastMorseModeCheckbox = QCheckBox("Fast Morse Mode")
         self.fastMorseModeCheckbox.setChecked(self.config.get("fastMorseMode", False))
@@ -1076,7 +1090,7 @@ class Window(QDialog):
         self.updateFastMorseModeAvailability()  # Initialize the state based on the current key mode
 
         inputSettingsLayout.addLayout(SoundConfigLayout)
-        
+
         inputRadioGroup = QGroupBox("Align window horizontally from")
         posAxisLayout = QHBoxLayout()
         self.keyWinPosXLeftRadio = QRadioButton("Left")
@@ -1115,7 +1129,7 @@ class Window(QDialog):
         buttonsSec.addWidget(self.SaveButton)
         buttonsSec.addWidget(self.GOButton)
         inputSettingsLayout.addLayout(buttonsSec)
-        
+
         self.iconGroupBox.setLayout(inputSettingsLayout)
 
     def updateFastMorseModeAvailability(self):
@@ -1140,13 +1154,13 @@ class Window(QDialog):
             self.config['off'] = False
         else:
             self.config['off'] = True
-    
+
     def stopIt(self):
         logging.debug("Stopping components...")
         if self.listenerThread is not None:
             self.listenerThread.stop()
             self.listenerThread.wait()
-            self.listenerThread = None  
+            self.listenerThread = None
         if self.codeslayoutview is not None:
             self.codeslayoutview.hide()
             self.codeslayoutview = None
@@ -1155,7 +1169,7 @@ class Window(QDialog):
     def backToSettings (self):
         self.showNormal()
         self.stopIt()
-    
+
     def onOpenSettings (self):
         self.backToSettings()
 
@@ -1173,44 +1187,53 @@ class Window(QDialog):
         self.trayIconMenu.addAction(self.quitAction)
         self.trayIcon = QSystemTrayIcon(self)
         self.trayIcon.setContextMenu(self.trayIconMenu)
-        
-    def handle_key_event(self, key, is_press):
-        logging.debug(f"[handle_key_event] Event received: Key={key}, Pressed={is_press}")
+
+    def handle_key_event(self, key, is_press, role):
+        # logging.debug(f"[handle_key_event] t={key}, Pressed={is_press}")
         try:
             if is_press:
-                self.on_press(key)
+                self.on_press(key, role)
             else:
-                self.on_release(key)
+                self.on_release(key, role)
         except Exception as e:
             logging.warning(f"[handle_key_event] Error handling key event: {e}")
-            
 
-    def on_press(self, key):
+
+    def on_press(self, key, role):
         try:
             # Handle disable toggle (adapt keys according to your config)
             if self.check_disable_combination(key):
                 self.inputDisabled = not self.inputDisabled
                 return
-    
+
             if self.inputDisabled:
                 return  # Ignore input if disabled
-    
+
             # Prevent processing if key is already considered 'down'
             if self.lastKeyDownTime is not None:
                 return
-    
+
             # Start timing the key press
             self.lastKeyDownTime = time.time()
-            logging.debug(f"[on_press] Key pressed: {key}")
+            logging.debug(f"[Window on_press] Key pressed: {key}")
 
             if self.config.get('fastMorseMode', False) and not self.keySelectionRadioOneKey.isChecked():
                 self.fast_morse_mode_timer = QTimer(self)
                 self.fast_morse_mode_timer.timeout.connect(lambda: self.repeat_key(key))
                 self.fast_morse_mode_timer.start(100)  # Adjust the interval as needed
-    
+
+            if not self.keySelectionRadioOneKey.isChecked():
+                # Check for dit or dah or end based on role
+                if role == 0:
+                    self.addDit()
+                elif role == 1:
+                    self.addDah()
+                elif role == 2:
+                    self.endCharacter()
+
         except Exception as e:
             logging.warning(f"[on_press] Error on key press: {e}")
-    
+
     def repeat_key(self, key):
         maxDitTime = float(self.config.get('maxDitTime', 350))
         if key == 'SPACE':  # Example key for dot
@@ -1222,8 +1245,8 @@ class Window(QDialog):
     def check_disable_combination(self, key):
         # Example logic, replace with actual keys and states
         return key == 'P' and self.key_state['CTRL'] and self.key_state['SHIFT']
-    
-    def on_release(self, key):
+
+    def on_release(self, key, role):
         try:
             if self.fast_morse_mode_timer:
                 self.fast_morse_mode_timer.stop()
@@ -1233,17 +1256,20 @@ class Window(QDialog):
                 duration = (time.time() - self.lastKeyDownTime) * 1000  # Duration in milliseconds
                 self.lastKeyDownTime = None  # Reset key down time
 
-                # Check for dit or dah based on duration
-                maxDitTime = float(self.config.get('maxDitTime', 350))
-                if duration < maxDitTime:
-                    self.addDit()
-                else:
-                    self.addDah()
-    
-                # Start timer for end character sequence
-                self.startEndCharacterTimer()
-                logging.debug(f"[on_release] Key released: {key}, duration: {duration}ms")
-    
+                if self.keySelectionRadioOneKey.isChecked():
+                    # Check for dit or dah based on duration
+                    maxDitTime = float(self.config.get('maxDitTime', 350))
+                    if duration < maxDitTime:
+                        self.addDit()
+                    else:
+                        self.addDah()
+
+                if self.keySelectionRadioOneKey.isChecked() or self.keySelectionRadioTwoKey.isChecked():
+                    # Start timer for end character sequence
+                    self.startEndCharacterTimer()
+
+                logging.debug(f"[Window on_release] Key released: {key}, duration: {duration}ms")
+
         except Exception as e:
             logging.warning(f"[on_release] Error on key release: {e}")
 
@@ -1254,7 +1280,7 @@ class Window(QDialog):
             # play("res/dit_sound.wav") #nava
             self.audioSelector.play_audio("res/dit_sound.wav")
         self.codeslayoutview.Dit()
-    
+
     def addDah(self):
         self.currentCharacter.append(2)
         if self.config['withsound']:
@@ -1271,31 +1297,27 @@ class Window(QDialog):
         self.endCharacterTimer.timeout.connect(self.endCharacter)
         self.endCharacterTimer.start(int(self.config['minLetterPause']))  # Configure delay from settings
         logging.debug(f"[startEndCharacter] Timer restarted with a delay of {self.config['minLetterPause']} ms")
-        
+
 
     def endCharacter(self):
         morse_code = "".join(str(char) for char in self.currentCharacter)
         if self.endCharacterTimer is not None:
             self.endCharacterTimer.stop()
             self.endCharacterTimer = None
-    
+
         try:
             active_layout = self.layoutManager.get_active_layout()
             items = active_layout.get('items', [])
             item = next((item for item in items if item.get('code') == morse_code), None)
             print(item)
-    
+
             if item and '_action' in item:
                 action = item['_action']
-                if hasattr(action, 'perform') and callable(action.perform):
-                    action.perform()                
-                    logging.info(f"[endCharacter] Action performed for Morse code: {morse_code}")
-                    if self.config['withsound']:
-                        #play(self.config.get('SoundTyping', 'res/typing_sound.wav'))  # Play typing sound
-                        self.audioSelector.play_audio(self.config.get('SoundTyping', 'res/typing_sound.wav'))
-                else:
-                    logging.error(f"[endCharacter] '_action' does not have a callable 'perform' method for Morse code: {morse_code}")
-
+                action.perform()
+                logging.info(f"[endCharacter] Action performed for Morse code: {morse_code}")
+                if self.config['withsound']:
+                    #play(self.config.get('SoundTyping', 'res/typing_sound.wav'))  # Play typing sound
+                    self.audioSelector.play_audio(self.config.get('SoundTyping', 'res/typing_sound.wav'))
             else:
                 logging.warning(f"[endCharacter] No action found for Morse code: {morse_code}")
         except Exception as e:
@@ -1306,7 +1328,7 @@ class Window(QDialog):
 
 class CodeRepresentation(QWidget):
     def __init__(self, parent, code, item, c1, config):
-        super(CodeRepresentation, self).__init__(None) 
+        super(CodeRepresentation, self).__init__(None)
         self.config = config
         #logging.debug("CodeRepresentation - Item: %s", item)
         #logging.debug("CodeRepresentation - Config: %s", config)
@@ -1315,8 +1337,8 @@ class CodeRepresentation(QWidget):
         self.character = QLabel(self.item['_action'].getlabel())
         self.character.setGeometry(10, 10, 10, 10)
         self.character.setContentsMargins(0, 0, 0, 0)
-        self.character.setAlignment(Qt.AlignTop)        
-        self.codeline = QLabel() 
+        self.character.setAlignment(Qt.AlignTop)
+        self.codeline = QLabel()
         self.codeline.setAlignment(Qt.AlignTop)
         self.codeline.setContentsMargins(0, 0, 0, 0)
         self.codeline.move(20, 30)
@@ -1325,7 +1347,7 @@ class CodeRepresentation(QWidget):
         vlayout.addWidget(self.character)
         vlayout.addWidget(self.codeline)
         vlayout.setAlignment(self.character, Qt.AlignCenter)
-        vlayout.setAlignment(self.codeline, Qt.AlignCenter)        
+        vlayout.setAlignment(self.codeline, Qt.AlignCenter)
         self.setLayout(vlayout)
         self.setContentsMargins(0, 0, 0, 0)
      #   self.show()
@@ -1334,24 +1356,24 @@ class CodeRepresentation(QWidget):
         self.character.setText(item['_action'].getlabel())
         self.toggled = False
         self.updateView()
-        
+
     def item_label(self):
         action = self.item.get('_action')
         return action.getlabel() if action is not None else ""
-    
+
     def codetocode(self, code):
         toReturn = code.replace('1', '.')
         toReturn = toReturn.replace('2', '-')
         return toReturn;
-    
+
     def enable(self):
         self.is_enabled = True
         self.updateView()
-        
+
     def disable(self):
         self.is_enabled = False
         self.updateView()
-        
+
     def updateView (self):
         enabled = self.is_enabled
         codeselectrange = self.disabledchars if enabled  and self.disabledchars > 0 else 0
@@ -1361,22 +1383,22 @@ class CodeRepresentation(QWidget):
         codefontsize = int(5.0 * self.config['fontsizescale'])
         toggled = self.toggled
         self.character.setText("<font style='background-color:{bgcolor};color:{color};font-weight:bold;' size='{fontsize}'>{text}</font>"
-                               .format(color='blue' if enabled else 'lightgrey', 
+                               .format(color='blue' if enabled else 'lightgrey',
                                        text=(self.item_label().upper() if self.config['upperchars'] else self.item_label()),
                                        fontsize=charfontsize, bgcolor="yellow" if toggled else "none"))
         self.codeline.setText("<font size='{fontsize}'><font color='green'>{selecttext}</font><font color='{color}'>{text}</font></font>"
-                              .format(text=self.code[codeselectrange:], selecttext=self.code[:codeselectrange], 
+                              .format(text=self.code[codeselectrange:], selecttext=self.code[:codeselectrange],
                                       color='red' if enabled else 'lightgrey', fontsize=codefontsize))
-        
-        
+
+
     def enabled(self):
         return self.character.isEnabled()
-    
+
     def reset(self):
         self.enable()
         self.disabledchars = -1
         self.tickDitDah()
-    
+
     def Dit(self):
         #logging.debug(f"[CodeRepresentation] Attempting Dit. Enabled: {self.is_enabled}, Disabled Chars: {self.disabledchars}, Code Length: {len(self.code)}")
         if (self.enabled()):
@@ -1396,7 +1418,7 @@ class CodeRepresentation(QWidget):
             else:
                 self.disable()
                 #logging.debug("[CodeRepresentation] Dah failed - disabling.")
-    
+
     def tickDitDah(self):
         self.disabledchars += 1
         if (self.disabledchars > len(self.code)):
@@ -1406,7 +1428,7 @@ class CodeRepresentation(QWidget):
 class CodesLayoutViewWidget(QWidget):
     feedbackSignal = pyqtSignal()
     changeLayoutSignal = pyqtSignal(str)
-        
+
     def __init__(self, layout, config, parent=None):
         super(CodesLayoutViewWidget, self).__init__(parent)
         self.layout = layout
@@ -1428,7 +1450,7 @@ class CodesLayoutViewWidget(QWidget):
             key = coderep.item['_action'].key
             coderep.toggled = get_keystroke_state("CAPSLOCK")["locked"]# (state & 1) == 1
             coderep.updateView()
-         
+
     def changeLayout(self, layout_name):
         logging.debug(f"[CodesLayoutViewWidget changeLayout] Changing to  {layout_name} ")
         new_layout = self.parent().layoutManager.layouts.get(layout_name, None)
@@ -1439,7 +1461,7 @@ class CodesLayoutViewWidget(QWidget):
             self.show()
         else:
             logging.error(f"[CodesLayoutViewWidget changeLayout] Layout {layout_name} not found.")
-    
+
 
     def adjustPosition(self):
         #logging.debug("Current config: %s", self.config)
@@ -1448,17 +1470,17 @@ class CodesLayoutViewWidget(QWidget):
         # Explicit conversion to int to ensure no float values slip through
         x = int(self.config['winposx'])
         y = int(self.config['winposy'])
-    
+
         if self.config['winxaxis'] == 'left':
             x_position = x
         else:
             x_position = ssize.width() - size.width() - x
-    
+
         if self.config['winyaxis'] == 'top':
             y_position = y
         else:
             y_position = ssize.height() - size.height() - y
-    
+
         self.move(x_position, y_position)
 
     def setupLayout(self, layout):
@@ -1468,12 +1490,12 @@ class CodesLayoutViewWidget(QWidget):
         hlayout = QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
         self.vlayout.addLayout(hlayout)
-    
+
         self.keystroke_crs_map = {}
         self.crs = {}
         x = 0
         perrow = layout['column_len']
-    
+
         for item in layout['items']:
             logging.debug(f"LAYOUT Item: {item}")
             if 'emptyspace' not in item or not item['emptyspace']:
@@ -1481,7 +1503,7 @@ class CodesLayoutViewWidget(QWidget):
                 # Check if '_action' is an instance of ActionKeyStroke
                 if isinstance(item['_action'], ActionKeyStroke):
                     # Use the .name property from ActionKeyStroke
-                    label = item['_action'].label 
+                    label = item['_action'].label
                     key_name = item['_action'].name
                     self.keystroke_crs_map[key_name] = coderep
                 self.crs[item['code']] = coderep
@@ -1493,7 +1515,7 @@ class CodesLayoutViewWidget(QWidget):
                 hlayout.setContentsMargins(0, 0, 0, 0)
                 self.vlayout.addLayout(hlayout)
 
-    
+
     def Dit(self):
         for item in self.crs.values():
             item.Dit()
@@ -1501,15 +1523,15 @@ class CodesLayoutViewWidget(QWidget):
     def Dah(self):
         for item in self.crs.values():
             item.Dah()
-            
+
     def reset(self):
         for item in self.crs.values():
             item.reset()
-    
+
     def closeEvent(self, event):
         window.backToSettings()
-    
-    
+
+
 def get_keystroke_state(name):
     state = {
         "down": keyboard.is_pressed(name)
@@ -1530,11 +1552,11 @@ if __name__ == '__main__':
     user_data_dir = get_user_data_dir()
     os.makedirs(user_data_dir, exist_ok=True)
     app = CustomApplication(sys.argv)
-    
+
     if not QSystemTrayIcon.isSystemTrayAvailable():
         QMessageBox.critical(None, "MorseWriter", "I couldn't detect any system tray on this system.")
         sys.exit(1)
-    
+
     QApplication.setQuitOnLastWindowClosed(False)
 
     # Initialize managers
