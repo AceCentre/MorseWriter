@@ -270,38 +270,38 @@ class ConfigManager:
         "REPEATMODE": {'label': 'repeat', 'key_code': 'unknown', 'character': None, 'arg': 0},
         "SOUND": {'label': 'snd', 'key_code': 'unknown', 'character': None, 'arg': 8},
         "CODESET": {'label': 'code', 'key_code': 'unknown', 'character': None, 'arg': 9},
-        "MOUSERIGHT5": {'label': 'ms right 5', 'key_code': 'unknown', 'character': None, 'arg': 2},
-        "MOUSEUP5": {'label': 'ms up 5', 'key_code': 'unknown', 'character': None, 'arg': 3},
-        "MOUSECLICKLEFT": {'label': 'ms clkleft', 'key_code': 'unknown', 'character': None, 'arg': 4},
-        "MOUSEDBLCLICKLEFT": {'label': 'ms dblclkleft', 'key_code': 'unknown', 'character': None, 'arg': 5},
-        "MOUSECLKHLDLEFT": {'label': 'ms hldleft', 'key_code': 'unknown', 'character': None, 'arg': 6},
-        "MOUSEUPLEFT5": {'label': 'ms leftup 5', 'key_code': 'unknown', 'character': None, 'arg': 7},
-        "MOUSEDOWNLEFT5": {'label': 'ms leftdown 5', 'key_code': 'unknown', 'character': None, 'arg': 8},
-        "MOUSERELEASEHOLD": {'label': 'ms release', 'key_code': 'unknown', 'character': None, 'arg': 9},
-        "MOUSELEFT5": {'label': 'ms left 5', 'key_code': 'unknown', 'character': None, 'arg': 0},
-        "MOUSEDOWN5": {'label': 'ms down 5', 'key_code': 'unknown', 'character': None, 'arg': 1},
-        "MOUSECLICKRIGHT": {'label': 'ms clkright', 'key_code': 'unknown', 'character': None, 'arg': 2},
-        "MOUSEDBLCLICKRIGHT": {'label': 'ms dblclkright', 'key_code': 'unknown', 'character': None, 'arg': 3},
-        "MOUSECLKHLDRIGHT": {'label': 'ms hldright', 'key_code': 'unknown', 'character': None, 'arg': 4},
-        "MOUSEUPRIGHT5": {'label': 'ms rightup 5', 'key_code': 'unknown', 'character': None, 'arg': 5},
-        "MOUSEDOWNRIGHT5": {'label': 'ms rightdown 5', 'key_code': 'unknown', 'character': None, 'arg': 6},
-        "NORMALMODE": {'label': 'normal mode', 'key_code': 'unknown', 'character': None, 'arg': 7},
-        "MOUSEUP40": {'label': 'ms up 40', 'key_code': 'unknown', 'character': None, 'arg': 8},
-        "MOUSEUP250": {'label': 'ms up 250', 'key_code': 'unknown', 'character': None, 'arg': 9},
-        "MOUSEDOWN40": {'label': 'ms down 40', 'key_code': 'unknown', 'character': None, 'arg': 0},
-        "MOUSEDOWN250": {'label': 'ms down 250', 'key_code': 'unknown', 'character': None, 'arg': 1},
-        "MOUSELEFT40": {'label': 'ms left 40', 'key_code': 'unknown', 'character': None, 'arg': 2},
-        "MOUSELEFT250": {'label': 'ms left 250', 'key_code': 'unknown', 'character': None, 'arg': 3},
-        "MOUSERIGHT40": {'label': 'ms right 40', 'key_code': 'unknown', 'character': None, 'arg': 4},
-        "MOUSERIGHT250": {'label': 'ms right 250', 'key_code': 'unknown', 'character': None, 'arg': 5},
-        "MOUSEUPLEFT40": {'label': 'ms leftup 40', 'key_code': 'unknown', 'character': None, 'arg': 6},
-        "MOUSEUPLEFT250": {'label': 'ms leftup 250', 'key_code': 'unknown', 'character': None, 'arg': 7},
-        "MOUSEDOWNLEFT40": {'label': 'ms leftdown 40', 'key_code': 'unknown', 'character': None, 'arg': 8},
-        "MOUSEDOWNLEFT250": {'label': 'ms leftdown 250', 'key_code': 'unknown', 'character': None, 'arg': 9},
-        "MOUSEUPRIGHT40": {'label': 'ms rightup 40', 'key_code': 'unknown', 'character': None, 'arg': 0},
-        "MOUSEUPRIGHT250": {'label': 'ms rightup 250', 'key_code': 'unknown', 'character': None, 'arg': 1},
-        "MOUSEDOWNRIGHT40": {'label': 'ms rightdown 40', 'key_code': 'unknown', 'character': None, 'arg': 2},
-        "MOUSEDOWNRIGHT250": {'label': 'ms rightdown 250', 'key_code': 'unknown', 'character': None, 'arg': 3}
+        "MOUSERIGHT5": {'label': 'ms right 5', 'key_code': 'MOUSERIGHT5', 'character': None, 'arg': 2},
+        "MOUSEUP5": {'label': 'ms up 5', 'key_code': 'MOUSEUP5', 'character': None, 'arg': 3},
+        "MOUSECLICKLEFT": {'label': 'ms clkleft', 'key_code': 'MOUSECLICKLEFT', 'character': None, 'arg': 4},
+        "MOUSEDBLCLICKLEFT": {'label': 'ms dblclkleft', 'key_code': 'MOUSEDBLCLICKLEFT', 'character': None, 'arg': 5},
+        "MOUSECLKHLDLEFT": {'label': 'ms hldleft', 'key_code': 'MOUSECLKHLDLEFT', 'character': None, 'arg': 6},
+        "MOUSEUPLEFT5": {'label': 'ms leftup 5', 'key_code': 'MOUSEUPLEFT5', 'character': None, 'arg': 7},
+        "MOUSEDOWNLEFT5": {'label': 'ms leftdown 5', 'key_code': 'MOUSEDOWNLEFT5', 'character': None, 'arg': 8},
+        "MOUSERELEASEHOLD": {'label': 'ms release', 'key_code': 'MOUSERELEASEHOLD', 'character': None, 'arg': 9},
+        "MOUSELEFT5": {'label': 'ms left 5', 'key_code': 'MOUSELEFT5', 'character': None, 'arg': 0},
+        "MOUSEDOWN5": {'label': 'ms down 5', 'key_code': 'MOUSEDOWN5', 'character': None, 'arg': 1},
+        "MOUSECLICKRIGHT": {'label': 'ms clkright', 'key_code': 'MOUSECLICKRIGHT', 'character': None, 'arg': 2},
+        "MOUSEDBLCLICKRIGHT": {'label': 'ms dblclkright', 'key_code': 'MOUSEDBLCLICKRIGHT', 'character': None, 'arg': 3},
+        "MOUSECLKHLDRIGHT": {'label': 'ms hldright', 'key_code': 'MOUSECLKHLDRIGHT', 'character': None, 'arg': 4},
+        "MOUSEUPRIGHT5": {'label': 'ms rightup 5', 'key_code': 'MOUSEUPRIGHT5', 'character': None, 'arg': 5},
+        "MOUSEDOWNRIGHT5": {'label': 'ms rightdown 5', 'key_code': 'MOUSEDOWNRIGHT5', 'character': None, 'arg': 6},
+        "MOUSENORMALMODE": {'label': 'normal mode', 'key_code': 'NORMALMODE', 'character': None, 'arg': 7},
+        "MOUSEUP40": {'label': 'ms up 40', 'key_code': 'MOUSEUP40', 'character': None, 'arg': 8},
+        "MOUSEUP250": {'label': 'ms up 250', 'key_code': 'MOUSEUP250', 'character': None, 'arg': 9},
+        "MOUSEDOWN40": {'label': 'ms down 40', 'key_code': 'MOUSEDOWN40', 'character': None, 'arg': 0},
+        "MOUSEDOWN250": {'label': 'ms down 250', 'key_code': 'MOUSEDOWN250', 'character': None, 'arg': 1},
+        "MOUSELEFT40": {'label': 'ms left 40', 'key_code': 'MOUSELEFT40', 'character': None, 'arg': 2},
+        "MOUSELEFT250": {'label': 'ms left 250', 'key_code': 'MOUSELEFT250', 'character': None, 'arg': 3},
+        "MOUSERIGHT40": {'label': 'ms right 40', 'key_code': 'MOUSERIGHT40', 'character': None, 'arg': 4},
+        "MOUSERIGHT250": {'label': 'ms right 250', 'key_code': 'MOUSERIGHT250', 'character': None, 'arg': 5},
+        "MOUSEUPLEFT40": {'label': 'ms leftup 40', 'key_code': 'MOUSEUPLEFT40', 'character': None, 'arg': 6},
+        "MOUSEUPLEFT250": {'label': 'ms leftup 250', 'key_code': 'MOUSEUPLEFT250', 'character': None, 'arg': 7},
+        "MOUSEDOWNLEFT40": {'label': 'ms leftdown 40', 'key_code': 'MOUSEDOWNLEFT40', 'character': None, 'arg': 8},
+        "MOUSEDOWNLEFT250": {'label': 'ms leftdown 250', 'key_code': 'MOUSEDOWNLEFT250', 'character': None, 'arg': 9},
+        "MOUSEUPRIGHT40": {'label': 'ms rightup 40', 'key_code': 'MOUSEUPRIGHT40', 'character': None, 'arg': 0},
+        "MOUSEUPRIGHT250": {'label': 'ms rightup 250', 'key_code': 'MOUSEUPRIGHT250', 'character': None, 'arg': 1},
+        "MOUSEDOWNRIGHT40": {'label': 'ms rightdown 40', 'key_code': 'MOUSEDOWNRIGHT40', 'character': None, 'arg': 2},
+        "MOUSEDOWNRIGHT250": {'label': 'ms rightdown 250', 'key_code': 'MOUSEDOWNRIGHT250', 'character': None, 'arg': 3}
         }
         self.config_file = config_file or os.path.join(user_data_dir, 'config.json')
         self.default_config = default_config
@@ -368,9 +368,14 @@ class ConfigManager:
             arg = value['arg']
             toggle_action = value.get('toggle_action', False)
             
-            # Correctly capture the loop variables using default values in lambda
-            actions[key.upper()] = lambda item, win=window, lbl=label, kc=key_code, char=character, a=arg, tog=toggle_action: ActionKeyStroke(
-                {'label': lbl, 'key_code': kc, 'character': char, 'arg': a}, kc, tog, win)
+            if key.startswith('MOUSE'):
+                # Mouse actions will use ActionLegacy
+                actions[key.upper()] = lambda item, lbl=label, kc=key_code, char=character, a=arg, win=window: ActionLegacy(
+                item, a, lbl, kc)
+            else:
+                # Correctly capture the loop variables using default values in lambda
+                actions[key.upper()] = lambda item, win=window, lbl=label, kc=key_code, char=character, a=arg, tog=toggle_action: ActionKeyStroke(
+                    {'label': lbl, 'key_code': kc, 'character': char, 'arg': a}, kc, tog, win)
         
         # Define special actions with correct lambda capturing
         actions["CHANGELAYOUT"] = lambda item, win=window: ChangeLayoutAction(item, win.changeLayout)
@@ -417,6 +422,7 @@ class TypeState(pressagio.callback.Callback):
         return self.predictions
 
 
+
 class KeyListenerThread(QThread):
     keyEvent = pyqtSignal(str, bool)  # Emit key name and press/release status
 
@@ -426,6 +432,12 @@ class KeyListenerThread(QThread):
         self.keep_running = True  # Control running of the loop
 
     def run(self):
+        # Check if the operating system is MacOS
+        if platform.system() == 'Darwin':
+            # If it is, only allow modifier keys
+            allowed_keys = ['shift', 'ctrl', 'alt', 'cmd']
+            self.configured_keys = [key for key in self.configured_keys if key in allowed_keys]
+
         # Setup key hooks once, outside the loop
         for key in self.configured_keys:
             keyboard.on_press_key(key, self.on_press, suppress=True)
@@ -446,8 +458,6 @@ class KeyListenerThread(QThread):
         keyboard.unhook_all()  # Unhook all keys
         self.quit()  # Quit the thread's event loop if necessary
         self.wait()  # Wait for the thread to finish
-
-
 class PressagioCallback(pressagio.callback.Callback):
     def __init__(self, buffer):
         super().__init__()
@@ -824,6 +834,7 @@ class Window(QDialog):
     
     def startKeyListener(self):
         key_codes = self.get_configured_keys() 
+        logging.debug(f"[Window startKeyListener] Configured keys: {key_codes}")
         if not self.listenerThread:
             self.listenerThread = KeyListenerThread(configured_keys=key_codes)
             self.listenerThread.keyEvent.connect(self.handle_key_event)
@@ -955,7 +966,7 @@ class Window(QDialog):
         inputKeyComboBoxesLayout = QHBoxLayout()
 
         # Filter the keystrokes to only include those keys that are specified in morse_keys
-        morse_keys = ["SPACE", "ENTER", "ONE", "TWO", "Z", "F8", "F9", "RCTRL", "LCTRL", "RSHIFT", "LSHIFT", "ALT"]
+        morse_keys = ["SPACE", "ENTER", "ONE", "TWO", "Z", "F8", "F9", "RCTRL", "LCTRL", "RSHIFT", "LSHIFT", "ALT", "CTRL"]
         filtered_keystrokes = [(key, self.keystrokemap[key].label) for key in morse_keys if key in self.keystrokemap]
         
         # Set up the combo box for the first key using the filtered list
@@ -1276,11 +1287,15 @@ class Window(QDialog):
     
             if item and '_action' in item:
                 action = item['_action']
-                action.perform()                
-                logging.info(f"[endCharacter] Action performed for Morse code: {morse_code}")
-                if self.config['withsound']:
-                    #play(self.config.get('SoundTyping', 'res/typing_sound.wav'))  # Play typing sound
-                    self.audioSelector.play_audio(self.config.get('SoundTyping', 'res/typing_sound.wav'))
+                if hasattr(action, 'perform') and callable(action.perform):
+                    action.perform()                
+                    logging.info(f"[endCharacter] Action performed for Morse code: {morse_code}")
+                    if self.config['withsound']:
+                        #play(self.config.get('SoundTyping', 'res/typing_sound.wav'))  # Play typing sound
+                        self.audioSelector.play_audio(self.config.get('SoundTyping', 'res/typing_sound.wav'))
+                else:
+                    logging.error(f"[endCharacter] '_action' does not have a callable 'perform' method for Morse code: {morse_code}")
+
             else:
                 logging.warning(f"[endCharacter] No action found for Morse code: {morse_code}")
         except Exception as e:
