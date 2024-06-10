@@ -27,7 +27,11 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}";
 Name: "autostarticon"; Description: "{cm:AutoStartProgram,{#MyAppName}}"; GroupDescription: "{cm:AdditionalIcons}";
 
+[Dirs]
+Name: "{localappdata}\{#MyAppName}"
+
 [Files]
+Source: "{app}\user_data\*"; DestDir: "{localappdata}\{#MyAppName}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "dist\morsewriter\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\morsewriter\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
