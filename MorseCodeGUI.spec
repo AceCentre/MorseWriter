@@ -10,7 +10,7 @@ a = Analysis(
         ('user_data/*.json', '.'),  # Include all JSON files in the current directory
         ('res/*', 'res')  # Include all files in the 'res' directory
     ],
-    hiddenimports=['PyQt5.sip'],
+    hiddenimports =['PyQt5.sip'],
     hookspath=[],
     runtime_hooks=[],
     excludes=[],
@@ -35,4 +35,12 @@ exe = EXE(
     console=False,  # Set to False to run without a command window
     icon='res/MorseWriterIcon.ico',
     uac_uiaccess=True
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    name='morsewriter'
 )
