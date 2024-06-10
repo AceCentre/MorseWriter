@@ -41,6 +41,11 @@ jobs:
         run: |
           Start-Process -FilePath "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe" -ArgumentList "MorseWriterInstaller.iss" -Wait
 
+      - name: List contents of Output directory
+        run: |
+          echo "Listing contents of Output directory:"
+          Get-ChildItem -Path Output
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4.3.3
         with:
