@@ -11,13 +11,14 @@ AppId={{2DB71CE2-A8F1-4EB9-BA6D-EE1EAD16659C}
 AppName={#MyAppName}
 AppVersion=1.0.0
 ;AppVerName={#MyAppName} 1.0.0
-DefaultDirName={autopf}\{#MyAppName}
+DefaultDirName={autopf}\Ace Centre\{#MyAppName}
 DisableProgramGroupPage=yes
 OutputBaseFilename=MorseWriter-Installer
 SetupIconFile=res\MorseWriterIcon.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+PrivilegesRequired=admin
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -38,3 +39,6 @@ Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameter
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Verb: runas; Flags: postinstall skipifsilent shellexec runascurrentuser waituntilterminated;
+
+[Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyAppName}"; ValueData: "{app}\{#MyAppExeName}"; Tasks: autostarticon
