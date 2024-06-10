@@ -28,12 +28,13 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "autostarticon"; Description: "{cm:AutoStartProgram,{#MyAppName}}"; GroupDescription: "{cm:AdditionalIcons}";
 
 [Dirs]
-Name: "{localappdata}\{#MyAppName}"
+Name: "{localappdata}\{#MyAppName}\user_data"
 
 [Files]
-Source: "{app}\user_data\*"; DestDir: "{localappdata}\{#MyAppName}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\morsewriter\user_data\*"; DestDir: "{localappdata}\{#MyAppName}\user_data"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "dist\morsewriter\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\morsewriter\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
