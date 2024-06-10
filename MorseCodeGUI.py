@@ -77,11 +77,11 @@ def get_user_data_dir(app_name="MorseWriter"):
     if hasattr(sys, 'frozen'):
         # If the application is frozen, use the appropriate platform-specific directory
         if platform.system() == 'Windows':
-            return os.path.join('C:\\', 'Users', 'Public', 'Documents', 'Ace Centre', app_name)
+            return os.path.join('C:\\', 'Users', 'Public', 'Documents', 'Ace Centre', app_name, 'user_data')
         elif platform.system() == 'Darwin':
-            return os.path.join(os.path.expanduser('~/Library/Application Support/'), app_name)
+            return os.path.join(os.path.expanduser('~/Library/Application Support/'), app_name, 'user_data')
         else:
-            return os.path.join(os.path.expanduser('~/.config/'), app_name)
+            return os.path.join(os.path.expanduser('~/.config/'), app_name, 'user_data')
     else:
         # Use a local directory when running in development
         return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_data')
