@@ -77,7 +77,7 @@ def get_user_data_dir(app_name="MorseWriter"):
     if hasattr(sys, 'frozen'):
         # If the application is frozen, use the appropriate platform-specific directory
         if platform.system() == 'Windows':
-            return os.path.join(os.getenv('LOCALAPPDATA'), app_name)
+            return os.path.join(os.getenv('PROGRAMDATA'), app_name)
         elif platform.system() == 'Darwin':
             return os.path.join(os.path.expanduser('~/Library/Application Support/'), app_name)
         else:
