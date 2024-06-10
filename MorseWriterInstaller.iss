@@ -31,7 +31,7 @@ Name: "autostarticon"; Description: "{cm:AutoStartProgram,{#MyAppName}}"; GroupD
 Name: "{commonappdata}\{#MyAppName}\user_data"
 
 [Files]
-Source: "dist\morsewriter\user_data\*"; DestDir: "{commonappdata}\{#MyAppName}\user_data"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\morsewriter\_internal\user_data\*"; DestDir: "{commonappdata}\{#MyAppName}\user_data"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "dist\morsewriter\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\morsewriter\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
