@@ -1,3 +1,6 @@
+.DS_Store
+*.log
+Output/
 build/
 Thumbs.db
 __pycache__/

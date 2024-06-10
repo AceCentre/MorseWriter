@@ -2,7 +2,7 @@ MorseWriter
 -----------
 
 <p align="center">
-  <img src="https://github.com/willwade/MorseWriter/raw/master/icon.png" height="128" width="128"  />
+  <img src="https://github.com/willwade/MorseWriter/raw/master/res/MorseWriterLogo.jpeg" height="128" width="128"  />
   <img src="https://github.com/willwade/MorseWriter/raw/master/screenshot1.png" height="111" width="194" />
   <img src="https://github.com/willwade/MorseWriter/raw/master/screenshot2.png" height="106" width="131" />
 </p>
@@ -14,28 +14,20 @@ For code, bug tracking and feature requests see [https://github.com/willwade/Mor
 
 **Requirements**
 
-Currently built for Windows. Let us know how you get on with different variants of Windows. Plan is to port this to Mac at some point. 
+Pretty multiplatform. Well should be..although hideous problem on MacOS. 
 
 **Install with virtualenv (windows)**
 
 ```
-# if virtualenv is not installed
-# pip3 install virtualenv
-# install visual c++ build tools, installing visual studio community version will do it
-# install swig and have PATH env pointing to it, swig.org
-cd \path\to\MorseWriter
-virtualenv -p \path\to\python3 venv
-.\venv\Scripts\activate
-pip3 install -r requirements.txt
+# tested on py 3.11.4
+pip install -r requirements.txt
 python MorseCodeGUI.py
 ```
 
 **Make executable with pyinstaller**
 
-```
-# python 3.6.6 is supported, currently 3.7 is not working
-.\venv\Scripts\activate # if using virtualenv 
-# pip3 install pyinstaller
+``` 
+# pip install pyinstaller
 pyinstaller MorseCodeGUI.spec
 ```
 
