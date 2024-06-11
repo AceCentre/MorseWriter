@@ -11,10 +11,11 @@ from collections import OrderedDict
 from enum import Enum
 from threading import Thread
 
+
 # Third-party imports
 from PyQt5 import QtCore, QtMultimedia
 from PyQt5.QtMultimedia import QAudioDeviceInfo, QAudioOutput, QAudio, QAudioFormat
-from PyQt5.QtCore import QIODevice, QFile, QThread, pyqtSignal, QTimer, Qt, QThreadPool, QRunnable
+from PyQt5.QtCore import QIODevice, QFile, QThread, pyqtSignal, QTimer, Qt, QThreadPool, QRunnable, pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QAction, QCheckBox, QComboBox, QDialog, QGridLayout,
                              QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox,
@@ -255,7 +256,7 @@ class ConfigManager:
         "SHIFT": {'label': 'shift', 'key_code': 'shift', 'character': None, 'arg': None},
         "RSHIFT": {'label': 'rshift', 'key_code': 'right shift', 'character': None, 'arg': None},
         "LSHIFT": {'label': 'lshift', 'key_code': 'left shift', 'character': None, 'arg': None},
-        "CTRL": {'label': 'ctrl', 'key_code': 'trl', 'character': None, 'arg': None},
+        "CTRL": {'label': 'ctrl', 'key_code': 'ctrl', 'character': None, 'arg': None},
         "RCTRL": {'label': 'rctrl', 'key_code': 'right ctrl', 'character': None, 'arg': None},
         "LCTRL": {'label': 'lctrl', 'key_code': 'left ctrl', 'character': None, 'arg': None},
         "ALT": {'label': 'alt', 'key_code': 'alt', 'character': None, 'arg': None},
@@ -394,6 +395,25 @@ class ConfigManager:
             item, kd[item['action'].upper()]['key_code'], win=win)
 
         return actions
+    
+    def convert_key_to_qkey(self, keyname):
+        KEY_MAPPING = {
+            "SPACE": Qt.Key_Space,
+            "ENTER": Qt.Key_Return,
+            "ONE": Qt.Key_1,
+            "TWO": Qt.Key_2,
+            "Z": Qt.Key_Z,
+            "F8": Qt.Key_F8,
+            "F9": Qt.Key_F9,
+            "RCTRL": Qt.Key_Control,
+            "LCTRL": Qt.Key_Control,
+            "RSHIFT": Qt.Key_Shift,
+            "LSHIFT": Qt.Key_Shift,
+            "ALT": Qt.Key_Alt,
+            "CTRL": Qt.Key_Control,
+            # Add more mappings as needed
+        }
+        return KEY_MAPPING.get(keyname.upper(), None)
 
 
 class TypeState(pressagio.callback.Callback):
@@ -440,18 +460,13 @@ class KeyListenerThread(QThread):
         super().__init__()
         self.configured_keys = configured_keys  # keys in the 'keyboard' library format
         self.keep_running = True  # Control running of the loop
+        self.suppress_keys = platform.system() != 'Darwin'  # Do not suppress keys on macOS
 
     def run(self):
-        # Check if the operating system is MacOS
-        if platform.system() == 'Darwin':
-            # If it is, only allow modifier keys
-            allowed_keys = ['shift', 'ctrl', 'alt', 'cmd']
-            self.configured_keys = [key for key in self.configured_keys if key in allowed_keys]
-
         # Setup key hooks once, outside the loop
         for key in self.configured_keys:
-            keyboard.on_press_key(key, self.on_press, suppress=True)
-            keyboard.on_release_key(key, self.on_release, suppress=True)
+            keyboard.on_press_key(key, self.on_press, suppress=self.suppress_keys)
+            keyboard.on_release_key(key, self.on_release, suppress=self.suppress_keys)
 
         # Minimal loop to keep the thread alive
         while self.keep_running:
@@ -472,6 +487,49 @@ class KeyListenerThread(QThread):
         self.quit()  # Quit the thread's event loop if necessary
         self.wait()  # Wait for the thread to finish
 
+class KeyListenerWidget(QWidget):
+    keyEvent = pyqtSignal(str, bool, int)  # Emit key name, press/release status, and role
+
+    def __init__(self, configured_keys):
+        super().__init__()
+        self.configured_keys = configured_keys
+        self.setFocusPolicy(Qt.StrongFocus)  # Ensure widget can receive key events
+        logging.debug(f"KeyListenerWidget initialized with keys: {self.configured_keys}")
+
+    def keyPressEvent(self, event):
+        key_name = self.get_key_name(event.key())
+        logging.debug(f"Key pressed: {event.key()} (mapped to: {key_name})")
+        if key_name in self.configured_keys:
+            role = self.configured_keys.index(key_name)
+            logging.debug(f"Key '{key_name}' is in configured_keys at role {role}. Emitting keyEvent signal.")
+            self.keyEvent.emit(key_name, True, role)
+        else:
+            logging.debug(f"Key '{key_name}' is not in configured_keys. No action taken.")
+    
+    def keyReleaseEvent(self, event):
+        key_name = self.get_key_name(event.key())
+        logging.debug(f"Key released: {event.key()} (mapped to: {key_name})")
+        if key_name in self.configured_keys:
+            role = self.configured_keys.index(key_name)
+            logging.debug(f"Key '{key_name}' is in configured_keys at role {role}. Emitting keyEvent signal.")
+            self.keyEvent.emit(key_name, False, role)
+        else:
+            logging.debug(f"Key '{key_name}' is not in configured_keys. No action taken.")
+
+    def get_key_name(self, qt_key):
+        key_map = {
+            Qt.Key_Space: 'space',
+            Qt.Key_Return: 'enter',
+            Qt.Key_1: 'one',
+            Qt.Key_2: 'two',
+            Qt.Key_Z: 'z',
+            Qt.Key_F8: 'f8',
+            Qt.Key_F9: 'f9',
+            Qt.Key_Control: 'ctrl',
+            Qt.Key_Shift: 'shift',
+            Qt.Key_Alt: 'alt'
+        }
+        return key_map.get(qt_key, '')
 
 class PressagioCallback(pressagio.callback.Callback):
     def __init__(self, buffer):
@@ -772,15 +830,13 @@ class Window(QDialog):
         self.keystrokes = []
         self.keystrokemap = {}
         logging.info(f"Window initialized with layout: {self.layoutManager.main_layout_name}")
-
-        self.listenerThread = None
+        self.listener = None
         self.currentCharacter = []
         self.lastKeyDownTime = None
         self.endCharacterTimer = None
         self.inputDisabled = False
         self.codeslayoutview = None
         self.fast_morse_mode_timer = None
-
         self.audioSelector = AudioDeviceSelector()
 
     def load_default_config(self):
@@ -803,6 +859,7 @@ class Window(QDialog):
         self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.get_active_layout(), self.config)
         #  I Think this should be what we really need to do - but it's not working.
         # self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.get_active_layout(), self.config, self)
+        self.init_key_listener()  # Initialize key listener
         self.codeslayoutview.show()
         logging.debug(f"[Window init] Initial visibility status: {self.codeslayoutview.isVisible()}")
 
@@ -828,15 +885,26 @@ class Window(QDialog):
         self.setWindowTitle("MorseWriter V2.1")
         self.resize(400, 300)
 
+    def init_key_listener(self):
+        key_codes = self.get_configured_keys()
+        logging.debug(f"[Window init_key_listener] Configured keys: {key_codes}")
+        if platform.system() == 'Darwin':
+            self.listener = KeyListenerWidget(configured_keys=key_codes)
+            self.listener.keyEvent.connect(self.handle_key_event)
+            self.layout().addWidget(self.listener)  # Add the listener widget to the main layout
+            self.listener.setFocus()  # Ensure the listener widget gains focus
+        else:
+            self.listener = KeyListenerThread(configured_keys=key_codes)
+            self.listener.keyEvent.connect(self.handle_key_event)
+
 
     def get_configured_keys(self):
         key_codes = []
-        default_keys = {'keyone': 'SPACE', 'keytwo': 'ENTER', 'keythree': 'RIGHT CTRL'}
+        default_keys = {'keyone': 'SPACE', 'keytwo': 'ENTER', 'keythree': 'RCTRL'}
 
         for key in ['keyone', 'keytwo', 'keythree']:
             config_key = self.config.get(key, default_keys[key])
             try:
-                # Ensure keys are fetched in uppercase, which seems to be the format used in keystrokemap
                 key_code = self.keystrokemap[config_key.upper()].key_code
                 key_codes.append(key_code)
             except KeyError:
@@ -847,15 +915,23 @@ class Window(QDialog):
                 raise
         return key_codes
 
-
     def startKeyListener(self):
-        key_codes = self.get_configured_keys()
-        logging.debug(f"[Window startKeyListener] Configured keys: {key_codes}")
-        if not self.listenerThread:
-            self.listenerThread = KeyListenerThread(configured_keys=key_codes)
-            self.listenerThread.keyEvent.connect(self.handle_key_event)
-            self.listenerThread.start()
+        if isinstance(self.listener, QWidget):
+            self.listener.setFocus()
+            print("Key listener started")
+        elif isinstance(self.listener, QThread):
+            self.listener.start()
+            print("Key listener started")
+    
+    def stopKeyListener(self):
+        if isinstance(self.listener, QWidget):
+            self.listener.clearFocus()
+            print("Key listener stopped")
+        elif isinstance(self.listener, QThread):
+            self.listener.stop()
+            print("Key listener stopped")
 
+            
     def updateAudioProperties(self):
         if self.withSound.isChecked():
             self.iconComboBoxSoundDit.setEnabled(True)
@@ -883,8 +959,6 @@ class Window(QDialog):
             logging.debug(f"[Window changeLayout] Window is visible: {self.isVisible()}")
         else:
             logging.error(f"[Window changeLayout] Layout change failed: {layout_name} not found.")
-
-
 
     def getTypeStatePredictions(self):
         logging.debug(f"[Window] getTypeStatePredictions")
@@ -935,8 +1009,7 @@ class Window(QDialog):
             self.hide()
         self.config = self.collect_config()
         self.init()
-        if not self.listenerThread:
-            self.startKeyListener()
+        self.startKeyListener()
 
     def start (self):
         self.init()
@@ -1171,14 +1244,14 @@ class Window(QDialog):
 
     def stopIt(self):
         logging.debug("Stopping components...")
-        if self.listenerThread is not None:
-            self.listenerThread.stop()
-            self.listenerThread.wait()
-            self.listenerThread = None
+        if self.listener is not None:
+            self.stopKeyListener()
+            self.listener = None
         if self.codeslayoutview is not None:
             self.codeslayoutview.hide()
             self.codeslayoutview = None
         logging.debug("All components stopped.")
+
 
     def backToSettings (self):
         self.showNormal()
