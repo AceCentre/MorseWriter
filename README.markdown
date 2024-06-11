@@ -338,7 +338,7 @@ Enjoy!
 
 MorseWriter is licensed under the MIT License:
 
-  Copyright (c) 2012 Will Wade (http://sourceymonkey.com/)
+  Copyright (c) 2024 Will Wade (http://acecentre.org.uk/)
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
