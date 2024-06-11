@@ -4,11 +4,9 @@ on:
   push:
     branches:
       - main
-      - pynput
   pull_request:
     branches:
       - main
-      - pynput
 
 jobs:
   build:
