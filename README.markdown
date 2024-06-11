@@ -2,9 +2,9 @@ MorseWriter
 -----------
 
 <p align="center">
-  <img src="https://github.com/willwade/MorseWriter/raw/master/res/MorseWriterLogo.jpeg" height="128" width="128"  />
-  <img src="https://github.com/willwade/MorseWriter/raw/master/screenshot1.png" height="111" width="194" />
-  <img src="https://github.com/willwade/MorseWriter/raw/master/screenshot2.png" height="106" width="131" />
+  <img src="https://github.com/willwade/MorseWriter/raw/main/res/MorseWriterLogo.jpeg" height="128" width="128"  />
+  <img src="https://github.com/willwade/MorseWriter/raw/main/screenshot1.png" height="111" width="194" />
+  <img src="https://github.com/willwade/MorseWriter/raw/main/screenshot2.png" height="106" width="131" />
 </p>
 
 
