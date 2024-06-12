@@ -13,8 +13,8 @@ from threading import Thread
 
 # Third-party imports
 from PyQt5 import QtCore, QtMultimedia
-from PyQt5.QtMultimedia import QAudioDeviceInfo, QAudioOutput, QAudio, QAudioFormat
-from PyQt5.QtCore import QIODevice, QFile, QThread, pyqtSignal, QTimer, Qt, QThreadPool, QRunnable
+from PyQt5.QtMultimedia import QAudioDeviceInfo, QAudio, QAudioFormat, QAudioOutput
+from PyQt5.QtCore import QIODevice, QFile, QThread, pyqtSignal, QTimer, Qt, QObject
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QAction, QCheckBox, QComboBox, QDialog, QGridLayout,
                              QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox,
@@ -257,7 +257,7 @@ class ConfigManager:
         "LSHIFT": {'label': 'lshift', 'key_code': 'left shift', 'character': None, 'arg': None},
         "CTRL": {'label': 'ctrl', 'key_code': 'trl', 'character': None, 'arg': None},
         "RCTRL": {'label': 'rctrl', 'key_code': 'right ctrl', 'character': None, 'arg': None},
-        "LCTRL": {'label': 'lctrl', 'key_code': 'left ctrl', 'character': None, 'arg': None},
+        "LCTRL": {'label': 'lctrl', 'key_code': 'ctrl', 'character': None, 'arg': None},
         "ALT": {'label': 'alt', 'key_code': 'alt', 'character': None, 'arg': None},
         "INSERT": {'label': 'insert', 'key_code': 'insert', 'character': None, 'arg': None},
         "WINDOWS": {'label': 'win', 'key_code': 'cmd', 'character': None, 'arg': None},
@@ -458,19 +458,55 @@ class KeyListenerThread(QThread):
             time.sleep(0.1)  # Small sleep to avoid CPU overload
 
     def on_press(self, event):
-        # check the index of the event.name and send it with the key event
-        role = self.configured_keys.index(event.name)
-        self.keyEvent.emit(event.name, True, role)
+        logging.debug(f"[KeyListenerThread] on_press: {event.name}")
+        try:
+            role = self.configured_keys.index(event.name)
+            self.keyEvent.emit(event.name, True, role)
+        except Exception as e:
+            logging.warning(f"[KeyListenerThread] Error handling on_press key event: {e}")
 
     def on_release(self, event):
-        role = self.configured_keys.index(event.name)
-        self.keyEvent.emit(event.name, False, role)
+        logging.debug(f"[KeyListenerThread] on_release: {event.name}")
+        try:
+            role = self.configured_keys.index(event.name)
+            self.keyEvent.emit(event.name, False, role)
+        except Exception as e:
+            logging.warning(f"[KeyListenerThread] Error handling on_release key event: {e}")
 
     def stop(self):
         self.keep_running = False  # Signal the loop to stop
         keyboard.unhook_all()  # Unhook all keys
         self.quit()  # Quit the thread's event loop if necessary
         self.wait()  # Wait for the thread to finish
+
+
+class KeyCombinationListener(QObject):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.current_modifiers = 0
+        self.current_key = 0
+        logging.debug(f"[KeyCombinationListener __init__]")
+
+    def keyPressEvent(self, event):
+        self.current_modifiers |= int(event.modifiers())
+        self.current_key = event.key()
+
+        if (self.current_modifiers & Qt.CTRL and
+            self.current_modifiers & Qt.SHIFT and
+            self.current_key == Qt.Key_P):
+            self.resetState()
+            logging.debug("[KeyCombinationListener] \"Ctrl + Shift + P\" detected Escaping Morse Mode")
+            return True
+        else:
+            self.resetState()
+            return False
+
+    def keyReleaseEvent(self, event):
+        self.resetState()
+
+    def resetState(self):
+        self.current_modifiers = 0
+        self.current_key = 0
 
 
 class PressagioCallback(pressagio.callback.Callback):
@@ -855,6 +891,7 @@ class Window(QDialog):
             self.listenerThread = KeyListenerThread(configured_keys=key_codes)
             self.listenerThread.keyEvent.connect(self.handle_key_event)
             self.listenerThread.start()
+
 
     def updateAudioProperties(self):
         if self.withSound.isChecked():
@@ -1456,6 +1493,7 @@ class CodesLayoutViewWidget(QWidget):
         self.setupLayout(layout)
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.adjustPosition()
+        self.escapeMorseModeListener = KeyCombinationListener()
         logging.debug(f"[CodesLayoutViewWidget __init__]")
 
     def onFeedback (self):
@@ -1550,6 +1588,13 @@ class CodesLayoutViewWidget(QWidget):
     def closeEvent(self, event):
         window.backToSettings()
 
+    def keyPressEvent(self, event):
+        escapeMorseMode = self.escapeMorseModeListener.keyPressEvent(event)
+        if escapeMorseMode:
+            window.backToSettings()
+
+    def keyReleaseEvent(self, event):
+        self.escapeMorseModeListener.keyReleaseEvent(event)
 
 def get_keystroke_state(name):
     state = {
