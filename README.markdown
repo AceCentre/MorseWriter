@@ -18,7 +18,7 @@ Pretty multiplatform. Well should be..although hideous problem on MacOS.
 
 **Install with virtualenv (windows)**
 
-```
+```bash
 # tested on py 3.11.4
 pip install -r requirements.txt
 python MorseCodeGUI.py
@@ -26,15 +26,15 @@ python MorseCodeGUI.py
 
 **Make executable with pyinstaller**
 
-``` 
-# pip install pyinstaller
+```bash
+pip install pyinstaller
 pyinstaller MorseCodeGUI.spec
 ```
 
 **Usage**
 
-*   [Download the MorseWriter Application and Code Chart from here](https://github.com/willwade/MorseWriter/releases/download/2.2/MorseCodeGUI.zip)
-*   Run the MorseWriter.exe 
+*   [Download the MorseWriter Application and Code Chart from here](https://github.com/AceCentre/MorseWriter/releases/latest)
+*   Run the `MorseWriter-Installer.exe` 
 *   Select your options
 *   Note the two key option: the key on the left hand pull down menu relates to dit (*) and one on the right relates to dah (-)
 *   If you want to use a third key for the return character (removing the need for good timing) then you can do that with the third dropdown
@@ -49,7 +49,7 @@ pyinstaller MorseCodeGUI.spec
 * Look at the the code chart below or the coding window. Have it handy or print it!
 * Use notepad to test your typing skills
 * To get used to typing you have to first get used to the speed of things. Just try a e and a t for starters. 
-* Getting auditory feedback on the key entered may be useful. In which case you may find [this additional program](https://github.com/willwade/Scripting-Recipes-for-AT/tree/master/Autohotkey/SoundingKeyboardMouse#keyboard-sounder) of use. 
+* Getting auditory feedback on the key entered may be useful. In this case you may find [this additional program](https://github.com/willwade/Scripting-Recipes-for-AT/tree/master/Autohotkey/SoundingKeyboardMouse#keyboard-sounder) of use. 
 
 **Issues:**
 
