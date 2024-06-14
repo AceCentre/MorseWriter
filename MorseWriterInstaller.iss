@@ -48,34 +48,3 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyAppName}"; ValueData: "{app}\{#MyAppExeName}"; Tasks: autostarticon
 
-[Code]
-procedure RemoveTempDir();
-var
-  TempDir: String;
-begin
-  TempDir := ExpandConstant('{tmp}\_ME*');
-  if DirExists(TempDir) then
-  begin
-    if DelTree(TempDir, True, True, True) then
-    begin
-      Log('Temporary directory ' + TempDir + ' removed successfully.');
-    end
-    else
-    begin
-      Log('Failed to remove temporary directory ' + TempDir + '.');
-    end;
-  end;
-end;
-
-procedure CurStepChanged(CurStep: TSetupStep);
-begin
-  if CurStep = ssPostInstall then
-  begin
-    RemoveTempDir();
-  end;
-end;
-
-procedure DeinitializeSetup();
-begin
-  RemoveTempDir();
-end;
