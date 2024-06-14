@@ -1,0 +1,149 @@
+name: Release Latest
+
+# This can only be manually triggered, this is because this flow runs
+# on a custom Github Runner that runs inside Ace Centre and has access
+# to our signing key. As such we want this entire flow to access as
+# little as possible and be triggered manually to avoid any bad actors
+# abusing the workflow
+on: [workflow_dispatch]
+
+jobs:
+  GetVersion:
+    runs-on: ubuntu-latest
+    outputs:
+      VersionNumber: ${{ steps.get_version_number.outputs.VersionNumber }}
+      VersionNumberSpaceless: ${{ steps.get_version_number.outputs.VersionNumberSpaceless }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.4"
+
+      - name: Get version number
+        id: get_version_number
+        run: |
+          python src/utils/readini.py\
+              assets/Version.ini Release VersionNumber >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
+  BuildExecutable:
+    runs-on: windows-latest
+    needs: [GetVersion]
+    env:
+      VersionTag: v${{needs.GetVersion.outputs.VersionNumber}}
+      VersionTagSpaceless: v${{needs.GetVersion.outputs.VersionNumberSpaceless}}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.4"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Freeze Installer
+        run: pyinstaller MorseCodeGUI.spec
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: InitialBuild
+          path: dist
+          retention-days: 1
+
+  SignExecutable:
+    runs-on: self-hosted
+    needs: [BuildExecutable]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: InitialBuild
+          path: dist
+      - name: Sign Executable
+        run: signtool sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /a .\dist\morsewriter\MorseWriter.exe
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: SignedBuild
+          path: dist
+          retention-days: 1
+
+  BuildInstaller:
+    runs-on: windows-latest
+    needs: [SignExecutable]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: SignedBuild
+          path: dist
+      - name: Build Installer
+        run: iscc MorseWriterInstaller.iss
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: UnsignedInstaller
+          path: Output
+          retention-days: 1
+
+  SignInstaller:
+    env:
+      # Convenience variables with v prefix and short name.
+      VersionTag: v${{needs.GetVersion.outputs.VersionNumber}}
+      VersionTagSpaceless: v${{needs.GetVersion.outputs.VersionNumberSpaceless}}
+    runs-on: self-hosted
+    needs: [BuildInstaller, GetVersion]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: UnsignedInstaller
+          path: Output
+      - name: Sign Executable
+        run: signtool sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /a ./Output/MorseWriter-Installer-${{env.VersionTag}}.exe
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: SignedInstaller
+          path: Output
+          retention-days: 1
+
+  Release:
+    env:
+      # Convenience variables with v prefix and short name.
+      VersionTag: v${{needs.GetVersion.outputs.VersionNumber}}
+      VersionTagSpaceless: v${{needs.GetVersion.outputs.VersionNumberSpaceless}}
+    runs-on: self-hosted
+    needs: [SignInstaller, GetVersion]
+    steps:
+      - name: Create tag
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "refs/tags/${{env.VersionTagSpaceless}}",
+              sha: context.sha
+            })
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: SignedInstaller
+          path: Output
+
+      - name: release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{env.VersionTagSpaceless}}
+          name: ${{env.VersionTag}}
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            Output/MorseWriter-Installer-${{env.VersionTag}}.exe
