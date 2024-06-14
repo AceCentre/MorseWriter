@@ -272,7 +272,7 @@ class ConfigManager:
         "F10": {'label': 'F10', 'key_code': 'f10', 'character': None, 'arg': None},
         "F11": {'label': 'F11', 'key_code': 'f11', 'character': None, 'arg': None},
         "F12": {'label': 'F12', 'key_code': 'f12', 'character': None, 'arg': None},
-        "REPEATMODE": {'label': 'repeat', 'key_code': 'unknown', 'character': None, 'arg': 0},
+        "REPEATMODE": {'label': 'repeat', 'key_code': 'REPEATMODE', 'character': None, 'arg': 0},
         "SOUND": {'label': 'snd', 'key_code': 'unknown', 'character': None, 'arg': 8},
         "CODESET": {'label': 'code', 'key_code': 'unknown', 'character': None, 'arg': 9},
         "MOUSERIGHT5": {'label': 'ms right 5', 'key_code': 'MOUSERIGHT5', 'character': None, 'arg': 2},
@@ -389,6 +389,8 @@ class ConfigManager:
         # Assuming the action name is stored in item['action'] and matches keys in key_data
         actions["KEYSTROKE"] = lambda item, kd=self.key_data, win=window: ActionKeyStroke(
             item, kd[item['action'].upper()]['key_code'], win=win)
+
+        actions["REPEATMODE"] = lambda item, win=window: RepeatOnAction(item, repeat_on_callback=win.enableRepeatMode)
 
         return actions
 
@@ -610,7 +612,7 @@ def getPossibleCombos(currentCharacter):
 
 
 class Action (object):
-    def __init__ (self, item):
+    def __init__(self, item):
         self.item = item
     def getlabel (self):
         return self.item.get('label', "")
@@ -662,8 +664,7 @@ class ActionLegacy (Action):
             'MOUSECLICKRIGHT': lambda: clickMouse(mouse.RIGHT, 'click'),
             'MOUSECLKHLDLEFT': lambda: clickMouse(mouse.LEFT, 'press'),
             'MOUSECLKHLDRIGHT': lambda: clickMouse(mouse.RIGHT, 'press'),
-            'MOUSERELEASEHOLD': lambda: clickMouse(mouse.LEFT, 'release'),  # Assumes left button for example
-            'REPEATMODE': self.handleRepeatMode
+            'MOUSERELEASEHOLD': lambda: clickMouse(mouse.LEFT, 'release')  # Assumes left button for example
         }
 
         # Execute the mapped function based on self.key if exists
@@ -671,17 +672,6 @@ class ActionLegacy (Action):
             action_map[self.key]()
         else:
             logging.debug(f"[ActionLegacy-perform] No action defined for key: {self.key}")
-
-    def handleRepeatMode(self):
-        if self.repeaton:
-            if self.config.get('debug', False):
-                logging.info("repeat OFF")
-            self.repeaton = False
-        else:
-            if self.config.get('debug', False):
-                logging.info("repeat ON")
-            self.repeaton = True
-        logging.debug(f"[ActionLegacy] handleRepeatMode: {self.key}")
 
 
 class KeyStroke:
@@ -708,10 +698,8 @@ class ActionKeyStroke(Action):
     def repeaton(self):
         return self.window.repeaton  # Access dynamically
 
-    @property
-    def repeatkey(self):
-        return self.window.repeatkey  # Access dynamically
-
+    def set_repeaton(self, repeaton):
+        self.window.repeaton = repeaton
 
     def getlabel(self):
         # Returns the label associated with this action, if any.
@@ -727,15 +715,6 @@ class ActionKeyStroke(Action):
                 else:
                     keyboard.press(self.key)
             else:
-                if self.repeaton:
-                    if self.repeatkey is None:
-                        self.repeatkey = self.key
-                    else:
-                        logging.debug(f"[ActionKeyStroke] repeat code: {self.key}")
-                        keyboard.press(self.repeatkey)
-                        keyboard.press_and_release(self.key)
-                        keyboard.release(self.repeatkey)
-                else:
                     logging.debug(f"[ActionKeyStroke] pressing {self.key}, past Stream {self.window.typestate.past_stream()}")
 
                     keyboard.press_and_release(self.key)
@@ -820,6 +799,17 @@ class PredictionSelectLayoutAction(Action):
                     keyboard.press_and_release(char)  # This handles normal characters
 
 
+class RepeatOnAction(Action):
+    def __init__(self, item, repeat_on_callback):
+        super(RepeatOnAction, self).__init__(item)
+        self.repeat_on_callback = repeat_on_callback
+
+    def perform(self):
+        if callable(self.repeat_on_callback):
+            self.repeat_on_callback()
+        else:
+            raise ValueError("Repeat On callback is not callable")
+
 class Window(QDialog):
     def __init__(self, layoutManager=None, configManager=None):
         super(Window, self).__init__()
@@ -834,11 +824,15 @@ class Window(QDialog):
 
         self.listenerThread = None
         self.currentCharacter = []
+        self.previousCharacter = []
         self.lastKeyDownTime = None
         self.endCharacterTimer = None
         self.inputDisabled = False
         self.codeslayoutview = None
         self.fast_morse_mode_timer = None
+        self.repeat_character_timer = None
+
+        self.repeaton = False
 
         self.audioSelector = AudioDeviceSelector()
 
@@ -847,8 +841,9 @@ class Window(QDialog):
 
     def init(self):
         self.currentCharacter = []
+        self.previousCharacter = []
         self.repeaton = False
-        self.repeatkey = None
+
         logging.debug("[Window init] Setting active layout to: %s", self.layoutManager.main_layout_name)
         self.layoutManager.set_active(self.layoutManager.main_layout_name)
         logging.debug("[Window init] Active layout successfully set to: %s", self.layoutManager.active_layout_name)
@@ -1275,6 +1270,11 @@ class Window(QDialog):
 
     def on_press(self, key, role):
         try:
+            self.repeaton = False
+            if self.repeat_character_timer:
+                self.repeat_character_timer.stop()
+                self.repeat_character_timer = None
+
             # Handle disable toggle (adapt keys according to your config)
             if self.check_disable_combination(key):
                 self.inputDisabled = not self.inputDisabled
@@ -1377,10 +1377,37 @@ class Window(QDialog):
     def endCharacter(self):
         logging.debug(f"[Window] endCharacter")
 
-        morse_code = "".join(str(char) for char in self.currentCharacter)
         if self.endCharacterTimer is not None:
             self.endCharacterTimer.stop()
             self.endCharacterTimer = None
+
+        self.handleMorseCode(self.currentCharacter)
+
+        if self.repeaton:
+            if not self.previousCharacter == []:
+                logging.debug(f"[endCharacter] repeat mode is ON for Morse Code: {self.previousCharacter}")
+                self.repeat_character_timer = QTimer(self)
+                self.repeat_character_timer.timeout.connect(lambda: self.handleMorseCode(self.previousCharacter))
+                self.repeat_character_timer.start(300)
+            else:
+                logging.debug(f"[endCharacter] repeat mode is ON but no previous Morse Code was found")
+        else:
+            self.previousCharacter = self.currentCharacter
+
+        self.currentCharacter = []  # Reset after handling
+        self.codeslayoutview.reset()
+
+    def enableRepeatMode(self):
+        if self.config.get('debug', False):
+            logging.info("repeat ON")
+        self.repeaton = True
+        logging.debug(f"[Window] enableRepeatMode: repeat={self.repeaton}, previous code={self.previousCharacter}")
+
+    def handleMorseCode(self, character):
+        morse_code = "".join(str(char) for char in character)
+        if morse_code == "":
+            logging.warning(f"[handleMorseCode] No action found for Morse code: {morse_code}")
+            return
 
         try:
             active_layout = self.layoutManager.get_active_layout()
@@ -1392,20 +1419,17 @@ class Window(QDialog):
                 action = item['_action']
                 if hasattr(action, 'perform') and callable(action.perform):
                     action.perform()
-                    logging.info(f"[endCharacter] Action performed for Morse code: {morse_code}")
+                    logging.info(f"[handleMorseCode] Action performed for Morse code: {morse_code}")
                     if self.config['withsound']:
                         # play(self.config.get('SoundTyping', 'res/typing_sound.wav'))  # Play typing sound
                         self.audioSelector.play_audio(self.config.get('SoundTyping', 'res/typing_sound.wav'))
                 else:
                     logging.error(
-                        f"[endCharacter] '_action' does not have a callable 'perform' method for Morse code: {morse_code}")
+                        f"[handleMorseCode] '_action' does not have a callable 'perform' method for Morse code: {morse_code}")
             else:
-                logging.warning(f"[endCharacter] No action found for Morse code: {morse_code}")
+                logging.warning(f"[handleMorseCode] No action found for Morse code: {morse_code}")
         except Exception as e:
-            logging.error(f"[endCharacter] Failed to perform action for Morse code: {morse_code}. Error: {e}")
-        finally:
-            self.currentCharacter = []  # Reset after handling
-            self.codeslayoutview.reset()
+            logging.error(f"[handleMorseCode] Failed to perform action for Morse code: {morse_code}. Error: {e}")
 
 class CodeRepresentation(QWidget):
     def __init__(self, parent, code, item, c1, config):

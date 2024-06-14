@@ -61,7 +61,8 @@
             { "code": "1212", "action": "ENTER" },
             { "code": "1122", "action": "SPACE" },
             { "code": "2222", "action": "BACKSPACE" },
-            { "code": "22121", "action": "CHANGELAYOUT", "target": "main", "label": "GOTO Main" }
+            { "code": "22121", "action": "CHANGELAYOUT", "target": "main", "label": "GOTO Main" },
+            { "code": "121121", "action": "REPEATMODE", "label": "REPEAT"}
         ]
     },
     "main": {
@@ -153,7 +154,7 @@
         { "code": "22121", "action": "CHANGELAYOUT", "target": "mouse", "label": "GOTO Mouse" },
         { "code": "21112", "action": "CHANGELAYOUT", "target": "number", "label": "GOTO Number" },
         { "code": "111211", "action": "CHANGELAYOUT", "target": "typing", "label": "GOTO Typing" },
-        { "code": "121121", "action": "REPEATMODE" },
+        { "code": "121121", "action": "REPEATMODE", "label": "REPEAT"},
         { "code": "121211", "action": "SOUND" },
         { "code": "22212", "action": "CODESET" },
         { "code": "112222", "action": "F1" },
@@ -205,7 +206,8 @@
         { "code": "2221", "action": "MOUSECLICKRIGHT" },
         { "code": "2222", "action": "MOUSEDBLCLICKRIGHT" },
         { "code": "11111", "action": "MOUSECLKHLDRIGHT" },
-        { "code": "22121", "action": "CHANGELAYOUT", "target": "main", "label": "GOTO Main" }
+        { "code": "22121", "action": "CHANGELAYOUT", "target": "main", "label": "GOTO Main" },
+        { "code": "121121", "action": "REPEATMODE", "label": "REPEAT"}
       ]
     },
     "number": {
