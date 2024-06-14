@@ -19,7 +19,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QAction, QCheckBox, QComboBox, QDialog, QGridLayout,
                              QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox,
                              QPushButton, QRadioButton, QSystemTrayIcon, QVBoxLayout,
-                             QWidget, QApplication, QMenu, QFileDialog)
+                             QWidget, QApplication, QMenu, QFileDialog, QStatusBar)
 from nava import play
 import keyboard
 import mouse
@@ -162,17 +162,14 @@ def load_abbreviations(file_path):
 
 
 @staticmethod
-def expand_abbreviations(keys, abbreviations):
+def expand_abbreviation(keys, abbreviations):
     words = keys.split()
+    last_word = words[-1]
 
-    expanded_words = []
-    for word in words:
-        expanded = abbreviations.get(word)
-        if expanded is not None:
-            expanded_words.append(expanded)
-
-    return expanded_words
-
+    if last_word in abbreviations:
+        return abbreviations[last_word], len(last_word)
+    else:
+        return None,None
 
 class ConfigManager:
     def __init__(self, config_file=None, default_config=DEFAULT_CONFIG):
@@ -402,6 +399,8 @@ class TypeState(pressagio.callback.Callback):
         self.predictions = None
         self.presage = pressagio.Pressagio(self, pressagioconfig)
         self.abbreviations = abbreviations
+        self.expanded_text = None
+        self.keyLength = 0
 
     def past_stream (self):
         return self.text
@@ -411,27 +410,39 @@ class TypeState(pressagio.callback.Callback):
         self.text += char
         self.predictions = None
         logging.debug(f"Updated TypeState text: {self.text}")
+    def pushstr (self, str):
+        self.text += str
+        self.predictions = None
+        logging.debug(f"Updated TypeState text: {self.text}")
     def popchar (self):
         self.text = self.text[:-1]
         self.predictions = None
     def getpredictions(self):
-        logging.debug("[TypeState] Fetching predictions and abbreviations for text: {}".format(self.text))
+        logging.debug("[TypeState] Fetching predictions for text: {}".format(self.text))
         if self.predictions is None:
             try:
                 self.predictions = self.presage.predict()
                 logging.debug("[TypeState] Predictions fetched: {}".format(self.predictions))
 
-                self.expanded_text = expand_abbreviations(self.text, self.abbreviations)
-                logging.debug("[TypeState] Abbreviations fetched: {}".format(self.expanded_text))
-
-                for itm in self.predictions:
-                    self.expanded_text.append(itm)
-
             except Exception as e:
                 logging.error(f"[TypeState] Failed to generate predictions: {str(e)}")
                 self.predictions = []
 
-        return self.expanded_text
+        return self.predictions
+
+
+    def get_abbreviation(self):
+        logging.debug("[TypeState] Fetching abbreviation for text: {}".format(self.text))
+        if self.text is not None:
+            try:
+                self.expanded_text, self.keyLength = expand_abbreviation(self.text, self.abbreviations)
+                logging.debug("[TypeState] Abbreviation fetched: {}".format(self.expanded_text))
+
+            except Exception as e:
+                logging.error(f"[TypeState] Failed to get abbreviations: {str(e)}")
+                self.expanded_text = None, None
+
+        return self.expanded_text, self.keyLength
 
 class KeyListenerThread(QThread):
     keyEvent = pyqtSignal(str, bool, int)  # Emit key name and press/release status
@@ -609,7 +620,6 @@ class Action (object):
 
 
 class ActionLegacy (Action):
-
     def __init__(self, item, arg, label, key=None):
         super(ActionLegacy, self).__init__(item)  # Pass required parameters
         # Additional initialization for ActionLegacy
@@ -652,7 +662,7 @@ class ActionLegacy (Action):
             'MOUSECLICKRIGHT': lambda: clickMouse(mouse.RIGHT, 'click'),
             'MOUSECLKHLDLEFT': lambda: clickMouse(mouse.LEFT, 'press'),
             'MOUSECLKHLDRIGHT': lambda: clickMouse(mouse.RIGHT, 'press'),
-            'MOUSERELEASEHOLD': lambda: clickMouse(mouse.LEFT, 'release'), # Assumes left button for example
+            'MOUSERELEASEHOLD': lambda: clickMouse(mouse.LEFT, 'release'),  # Assumes left button for example
             'REPEATMODE': self.handleRepeatMode
         }
 
@@ -671,6 +681,7 @@ class ActionLegacy (Action):
             if self.config.get('debug', False):
                 logging.info("repeat ON")
             self.repeaton = True
+        logging.debug(f"[ActionLegacy] handleRepeatMode: {self.key}")
 
 
 class KeyStroke:
@@ -725,7 +736,8 @@ class ActionKeyStroke(Action):
                         keyboard.press_and_release(self.key)
                         keyboard.release(self.repeatkey)
                 else:
-                    logging.debug(f"[ActionKeyStroke] pressing {self.key}")
+                    logging.debug(f"[ActionKeyStroke] pressing {self.key}, past Stream {self.window.typestate.past_stream()}")
+
                     keyboard.press_and_release(self.key)
                     # Update typestate based on key action.
                     if self.window.typestate is not None:
@@ -736,6 +748,16 @@ class ActionKeyStroke(Action):
                         else:
                             logging.debug(f"[ActionKeyStroke] pushchar")
                             self.window.typestate.pushchar(key_char)
+
+                        abbreviation, keylength = self.window.typestate.get_abbreviation()
+                        if abbreviation is not None:
+                            for _ in range(keylength):
+                                self.window.typestate.popchar()
+                                keyboard.press_and_release('backspace')
+
+                            for itm in abbreviation:
+                                keyboard.press_and_release(itm)
+                            keyboard.press_and_release('space')
         except Exception as e:
             logging.error(f"[ActionKeyStroke] Error during key press/release: {e}")
 
@@ -780,6 +802,7 @@ class PredictionSelectLayoutAction(Action):
         return ""
 
     def perform(self):
+        logging.debug(f"[PredictionSelectLayoutAction] perform")
         if typestate is not None:
             target = self.item['target']
             predictions = typestate.getpredictions()
@@ -913,11 +936,11 @@ class Window(QDialog):
             self.codeslayoutview = CodesLayoutViewWidget(self.layoutManager.get_active_layout(), self.config)
             self.codeslayoutview.show()
             logging.debug(f"[Window changeLayout] CodesLayoutViewWidget is visible: {self.codeslayoutview.isVisible()}")
+            logging.debug(f"[Window changeLayout] Window is visible: {self.isVisible()}")
 
             # Explicitly call show() on both the widget and the window
             # self.codeslayoutview.show()
             # self.show()
-            logging.debug(f"[Window changeLayout] Window is visible: {self.isVisible()}")
         else:
             logging.error(f"[Window changeLayout] Layout change failed: {layout_name} not found.")
 
@@ -1352,6 +1375,8 @@ class Window(QDialog):
 
 
     def endCharacter(self):
+        logging.debug(f"[Window] endCharacter")
+
         morse_code = "".join(str(char) for char in self.currentCharacter)
         if self.endCharacterTimer is not None:
             self.endCharacterTimer.stop()
@@ -1481,6 +1506,38 @@ class CodeRepresentation(QWidget):
             self.is_enabled = False
         self.updateView()
 
+
+class ColorIndicatorWidget(QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(16, 16)
+        self.setStyleSheet("""
+            QLabel {
+                background-color: green;
+                border-radius: 8px;
+                padding: 8px;
+            }
+        """)
+
+    def set_color(self, color):
+        if color == "green":
+            self.setStyleSheet("""
+                QLabel {
+                    background-color: green;
+                    border-radius: 8px;
+                    padding: 8px;
+                }
+            """)
+        elif color == "red":
+            self.setStyleSheet("""
+                QLabel {
+                    background-color: red;
+                    border-radius: 8px;
+                    padding: 8px;
+                }
+            """)
+
+
 class CodesLayoutViewWidget(QWidget):
     feedbackSignal = pyqtSignal()
     changeLayoutSignal = pyqtSignal(str)
@@ -1489,6 +1546,9 @@ class CodesLayoutViewWidget(QWidget):
         super(CodesLayoutViewWidget, self).__init__(parent)
         self.layout = layout
         self.config = config
+        self.status_bar = QStatusBar()
+        self.sound_indicator = ColorIndicatorWidget(self.status_bar)
+        self.status_bar.addPermanentWidget(self.sound_indicator)
         self.changeLayoutSignal.connect(self.changeLayout)
         self.setupLayout(layout)
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
@@ -1572,6 +1632,15 @@ class CodesLayoutViewWidget(QWidget):
                 hlayout.setContentsMargins(0, 0, 0, 0)
                 self.vlayout.addLayout(hlayout)
 
+        if self.config['withsound']:
+            self.sound_indicator.set_color("green")
+            self.status_bar.showMessage("Sound Mode Enabled")
+        else:
+            self.sound_indicator.set_color("red")
+            self.status_bar.showMessage("Sound Mode Disabled")
+
+        self.vlayout.addWidget(self.status_bar)
+
 
     def Dit(self):
         for item in self.crs.values():
@@ -1595,6 +1664,9 @@ class CodesLayoutViewWidget(QWidget):
 
     def keyReleaseEvent(self, event):
         self.escapeMorseModeListener.keyReleaseEvent(event)
+
+    def updateSoundSupport(self):
+        return True
 
 def get_keystroke_state(name):
     state = {
