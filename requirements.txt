@@ -2,4 +2,5 @@ PyQt5
 keyboard
 mouse
 nava  
-pressagio  
+pressagio
+pyinstaller
