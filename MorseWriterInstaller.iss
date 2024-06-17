@@ -3,6 +3,9 @@
 
 #define MyAppName "MorseWriter"
 #define MyAppExeName "MorseWriter.exe"
+#define VersionFile "version"
+#define VersionNumber StrDel(LoadStringFromFile(VersionFile), "VersionNumber=", 1)
+#define OutputFilename "MorseWriter-Installer-v" + VersionNumber
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
@@ -13,7 +16,7 @@ AppVersion=1.0.0
 ;AppVerName={#MyAppName} 1.0.0
 DefaultDirName={autopf}\Ace Centre\{#MyAppName}
 DisableProgramGroupPage=yes
-OutputBaseFilename=MorseWriter-Installer
+OutputBaseFilename={#OutputFilename}
 SetupIconFile=res\MorseWriterIcon.ico
 Compression=lzma
 SolidCompression=yes
