@@ -3,7 +3,7 @@
 
 #define MyAppName "MorseWriter"
 #define MyAppExeName "MorseWriter.exe"
-#define VersionNumber {#GetEnv('APP_VERSION')}
+#define VersionNumber GetEnv('APP_VERSION')
 #define OutputFilename "MorseWriter-Installer-v" + VersionNumber
 
 [Setup]
