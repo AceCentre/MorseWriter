@@ -12,7 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       VersionNumber: ${{ steps.get_version_number.outputs.VersionNumber }}
-      VersionNumberSpaceless: ${{ steps.get_version_number.outputs.VersionNumberSpaceless }}
 
     steps:
       - name: Checkout Code
@@ -26,16 +25,13 @@ jobs:
       - name: Get version number
         id: get_version_number
         run: |
-          python src/utils/readini.py\
-              assets/Version.ini Release VersionNumber >> "$GITHUB_OUTPUT"
-          cat "$GITHUB_OUTPUT"
+          cat version >> "$GITHUB_OUTPUT"
 
   BuildExecutable:
     runs-on: windows-latest
     needs: [GetVersion]
     env:
       VersionTag: v${{needs.GetVersion.outputs.VersionNumber}}
-      VersionTagSpaceless: v${{needs.GetVersion.outputs.VersionNumberSpaceless}}
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python
@@ -95,7 +91,6 @@ jobs:
     env:
       # Convenience variables with v prefix and short name.
       VersionTag: v${{needs.GetVersion.outputs.VersionNumber}}
-      VersionTagSpaceless: v${{needs.GetVersion.outputs.VersionNumberSpaceless}}
     runs-on: self-hosted
     needs: [BuildInstaller, GetVersion]
     steps:
@@ -117,7 +112,6 @@ jobs:
     env:
       # Convenience variables with v prefix and short name.
       VersionTag: v${{needs.GetVersion.outputs.VersionNumber}}
-      VersionTagSpaceless: v${{needs.GetVersion.outputs.VersionNumberSpaceless}}
     runs-on: self-hosted
     needs: [SignInstaller, GetVersion]
     steps:
@@ -128,7 +122,7 @@ jobs:
             github.rest.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: "refs/tags/${{env.VersionTagSpaceless}}",
+              ref: "refs/tags/${{env.VersionTag}}",
               sha: context.sha
             })
 
@@ -140,7 +134,7 @@ jobs:
       - name: release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{env.VersionTagSpaceless}}
+          tag_name: ${{env.VersionTag}}
           name: ${{env.VersionTag}}
           draft: false
           prerelease: false
