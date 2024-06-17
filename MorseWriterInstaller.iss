@@ -3,8 +3,7 @@
 
 #define MyAppName "MorseWriter"
 #define MyAppExeName "MorseWriter.exe"
-#define VersionFile "version"
-#define VersionNumber StrDel(LoadStringFromFile(VersionFile), "VersionNumber=", 1)
+#define VersionNumber {#GetEnv('APP_VERSION')}
 #define OutputFilename "MorseWriter-Installer-v" + VersionNumber
 
 [Setup]
