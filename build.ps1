@@ -26,6 +26,14 @@ pyinstaller --clean MorseCodeGUI.spec
 # Ensure that Chocolatey is installed
 # choco install innosetup --yes
 
+
+$versionFile = "version"
+$versionLine = Get-Content $versionFile | Select-Object -First 1
+$versionNumber = $versionLine -replace "VersionNumber=", ""
+[System.Environment]::SetEnvironmentVariable("APP_VERSION", $versionNumber, [System.EnvironmentVariableTarget]::Process)
+Write-Output "APP_VERSION set to $versionNumber"
+iscc MorseWriterInstaller.iss
+        
 # Build Installer
 Start-Process -FilePath "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe" -ArgumentList "MorseWriterInstaller.iss" -Wait
 

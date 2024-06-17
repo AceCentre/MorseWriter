@@ -78,10 +78,18 @@ jobs:
         with:
           name: SignedBuild
           path: dist
-      - name: Run Python script to set version environment variable
-        run: python res/setVersionToEnv.py
+      - name: Set Version Environment Variable
+        run: |
+          $versionFile = "version"
+          $versionLine = Get-Content $versionFile | Select-Object -First 1
+          $versionNumber = $versionLine -replace "VersionNumber=", ""
+          [System.Environment]::SetEnvironmentVariable("APP_VERSION", $versionNumber, [System.EnvironmentVariableTarget]::Process)
+          Write-Output "APP_VERSION set to $versionNumber"
+        shell: pwsh
       - name: Build Installer
         run: iscc MorseWriterInstaller.iss
+        env:
+          APP_VERSION: ${{ env.APP_VERSION }}
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
