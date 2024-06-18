@@ -34,8 +34,8 @@ exe = EXE(
     runtime_tmpdir=None,
     console=False,  # Set to False to run without a command window
     icon='res/MorseWriterIcon.ico',
-    uac_uiaccess=True
-#    uac_admin=True
+    uac_uiaccess=True,
+    uac_admin=True
 )
 
 coll = COLLECT(
