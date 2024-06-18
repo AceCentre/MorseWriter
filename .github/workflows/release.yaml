@@ -71,25 +71,19 @@ jobs:
 
   BuildInstaller:
     runs-on: windows-latest
-    needs: [SignExecutable]
+    needs: [SignExecutable, GetVersion]
+    env:
+      VersionTag: ${{needs.GetVersion.outputs.VersionNumber}}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: SignedBuild
           path: dist
-      - name: Set Version Environment Variable
-        run: |
-          $versionFile = "version"
-          $versionLine = Get-Content $versionFile | Select-Object -First 1
-          $versionNumber = $versionLine -replace "VersionNumber=", ""
-          [System.Environment]::SetEnvironmentVariable("APP_VERSION", $versionNumber, [System.EnvironmentVariableTarget]::Process)
-          Write-Output "APP_VERSION set to $versionNumber"
-        shell: pwsh
       - name: Build Installer
         run: iscc MorseWriterInstaller.iss
         env:
-          APP_VERSION: ${{ env.APP_VERSION }}
+          APP_VERSION: ${{ env.VersionTag }}
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
