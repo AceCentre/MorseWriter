@@ -11,7 +11,7 @@
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{2DB71CE2-A8F1-4EB9-BA6D-EE1EAD16659C}
 AppName={#MyAppName}
-AppVersion=1.0.0
+AppVersion=3.3
 ;AppVerName={#MyAppName} 1.0.0
 DefaultDirName={autopf}\Ace Centre\{#MyAppName}
 DisableProgramGroupPage=yes
@@ -35,7 +35,7 @@ Name: "{commondocs}\Ace Centre\{#MyAppName}\user_data"
 [Files]
 Source: "dist\morsewriter\_internal\user_data\*"; DestDir: "{commondocs}\Ace Centre\{#MyAppName}\user_data"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "dist\morsewriter\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "dist\morsewriter\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\morsewriter\_internal\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 

@@ -7,8 +7,8 @@ a = Analysis(
     pathex=['.'],
     binaries=[],
     datas=[
-        ('user_data/*.json', 'user_data'),  # Include all JSON files in the current directory
-        ('res/*', 'res')  # Include all files in the 'res' directory
+        ('user_data/*.*', 'user_data'),  # Include all JSON files in the current directory
+        ('res/*.*', 'res')  # Include all files in the 'res' directory
     ],
     hiddenimports =['PyQt5.sip'],
     hookspath=[],
@@ -34,7 +34,6 @@ exe = EXE(
     runtime_tmpdir=None,
     console=False,  # Set to False to run without a command window
     icon='res/MorseWriterIcon.ico',
-    uac_uiaccess=True,
     uac_admin=True
 )
 

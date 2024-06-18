@@ -36,10 +36,6 @@ logging.basicConfig(level=logging.DEBUG,format='%(name)s - %(levelname)s - %(mes
 
 lastkeydowntime = -1
 
-pressagioconfig_file= os.path.join(os.path.dirname(os.path.realpath(__file__)), "res","morsewriter_pressagio.ini")
-pressagioconfig = configparser.ConfigParser()
-pressagioconfig.read(pressagioconfig_file)
-
 keystrokes_state = {}
 currentX = 0
 currentY = 0
@@ -68,7 +64,6 @@ DEFAULT_CONFIG = {
   "winposx": 10,
   "winposy": 10
 }
-
 
 def get_user_data_dir(app_name="MorseWriter"):
     """
@@ -399,7 +394,24 @@ class TypeState(pressagio.callback.Callback):
     def __init__ (self, abbreviations=None):
         self.text = ""
         self.predictions = None
-        self.presage = pressagio.Pressagio(self, pressagioconfig)
+
+        pressagioconfig_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "res",
+                                            "morsewriter_pressagio.ini")
+        logging.debug(f"[TypeState] Searching for pressagio config file with name: {pressagioconfig_file}")
+
+        pressagioconfig = configparser.ConfigParser()
+        pressagioconfig.read(pressagioconfig_file)
+
+        database = pressagioconfig.get("Database", "database")
+        logging.debug(f"[TypeState] Searching for database file: {database}")
+
+        if pressagioconfig:
+            try:
+                self.presage = pressagio.Pressagio(self, pressagioconfig)
+                logging.debug("[TypeState] Pressagio Initialized successfully")
+            except Exception as e:
+                logging.error(f"[TypeState] Pressagio Failed to Initialize with error={e}")
+
         self.abbreviations = abbreviations
         self.expanded_text = None
         self.keyLength = 0
