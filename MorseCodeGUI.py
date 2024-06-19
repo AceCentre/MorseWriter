@@ -28,11 +28,29 @@ import pressagio.callback
 import pressagio
 import icons_rc
 
-# Configure basic logger
-#logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',format='%(name)s - %(levelname)s - %(message)s')
+def get_user_data_dir(app_name="MorseWriter"):
+    """
+    Returns the appropriate directory for storing user data based on the OS and whether the app is frozen.
+    """
+    if hasattr(sys, 'frozen'):
+        # If the application is frozen, use the appropriate platform-specific directory
+        if platform.system() == 'Windows':
+            return os.path.join('C:\\', 'Users', 'Public', 'Documents', 'Ace Centre', app_name, 'user_data')
+        elif platform.system() == 'Darwin':
+            return os.path.join(os.path.expanduser('~/Library/Application Support/'), app_name, 'user_data')
+        else:
+            return os.path.join(os.path.expanduser('~/.config/'), app_name, 'user_data')
+    else:
+        # Use a local directory when running in development
+        return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_data')
 
-# If you want to the console
-logging.basicConfig(level=logging.DEBUG,format='%(name)s - %(levelname)s - %(message)s')
+
+# Configure basic logger
+logfile = os.path.join(get_user_data_dir(), "morsewriter-log.log")
+logging.basicConfig(level=logging.DEBUG, filename=logfile, filemode='w',format='%(name)s - %(levelname)s - %(message)s')
+
+# # If you want to the console
+# logging.basicConfig(level=logging.DEBUG,format='%(name)s - %(levelname)s - %(message)s')
 
 lastkeydowntime = -1
 
@@ -65,21 +83,6 @@ DEFAULT_CONFIG = {
   "winposy": 10
 }
 
-def get_user_data_dir(app_name="MorseWriter"):
-    """
-    Returns the appropriate directory for storing user data based on the OS and whether the app is frozen.
-    """
-    if hasattr(sys, 'frozen'):
-        # If the application is frozen, use the appropriate platform-specific directory
-        if platform.system() == 'Windows':
-            return os.path.join('C:\\', 'Users', 'Public', 'Documents', 'Ace Centre', app_name, 'user_data')
-        elif platform.system() == 'Darwin':
-            return os.path.join(os.path.expanduser('~/Library/Application Support/'), app_name, 'user_data')
-        else:
-            return os.path.join(os.path.expanduser('~/.config/'), app_name, 'user_data')
-    else:
-        # Use a local directory when running in development
-        return os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_data')
 
 
 class AudioDeviceSelector(QWidget):
